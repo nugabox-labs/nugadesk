@@ -1,0 +1,45 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from .cleanup import purge_expired_soft_deletes
+from .config import get_settings
+from .database import Base, SessionLocal, engine
+from .routers import auth, projects, task_categories, todos, version, workspaces
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        purge_expired_soft_deletes(db)
+    finally:
+        db.close()
+    yield
+
+
+settings = get_settings()
+
+app = FastAPI(title="NUGADESK API", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origin_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth.router)
+app.include_router(version.router)
+app.include_router(workspaces.router)
+app.include_router(task_categories.router)
+app.include_router(projects.router)
+app.include_router(todos.router)
+
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok"}

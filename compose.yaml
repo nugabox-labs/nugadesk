@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nugadesk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nugadesk}
+      POSTGRES_DB: ${POSTGRES_DB:-nugadesk}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nugadesk}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      APP_MODE: ${APP_MODE:-prod}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-nugadesk}:${POSTGRES_PASSWORD:-nugadesk}@db:5432/${POSTGRES_DB:-nugadesk}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-env}
+      AUTH_USERNAME: ${AUTH_USERNAME:-admin}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:-change-me}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      VERSION_OVERRIDE: ${APP_VERSION:-}
+      GIT_COMMIT_OVERRIDE: ${APP_GIT_COMMIT:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

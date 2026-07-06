@@ -1,0 +1,14 @@
+services:
+  backend:
+    build:
+      target: prod
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      target: prod
+    ports:
+      - "80:80"
+    restart: unless-stopped

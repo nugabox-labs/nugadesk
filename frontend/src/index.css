@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+@theme {
+  /* Toss-inspired design tokens */
+  --color-primary: #3182f6;
+  --color-primary-hover: #1b64da;
+  --color-primary-light: #e8f3ff;
+
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f2f4f6;
+  --color-gray-200: #e5e8eb;
+  --color-gray-300: #d1d6db;
+  --color-gray-400: #b0b8c1;
+  --color-gray-500: #8b95a1;
+  --color-gray-600: #6b7684;
+  --color-gray-700: #4e5968;
+  --color-gray-800: #333d4b;
+  --color-gray-900: #191f28;
+
+  --color-danger: #f04452;
+  --color-success: #00c896;
+  --color-warning: #ff9500;
+
+  --radius-btn-sm: 8px;
+  --radius-btn-md: 10px;
+  --radius-btn-lg: 14px;
+  --radius-btn-xl: 16px;
+
+  --font-sans: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    color: var(--color-gray-900);
+    background-color: var(--color-gray-50);
+    -webkit-font-smoothing: antialiased;
+  }
+  #root {
+    height: 100%;
+  }
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    font-weight: 600;
+    border-radius: var(--radius-btn-md);
+    height: 38px;
+    padding: 0 16px;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-sm {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: var(--radius-btn-sm);
+    font-size: 0.8125rem;
+  }
+  .btn-lg {
+    height: 48px;
+    padding: 0 20px;
+    border-radius: var(--radius-btn-lg);
+    font-size: 1rem;
+  }
+  .btn-xl {
+    height: 56px;
+    padding: 0 24px;
+    border-radius: var(--radius-btn-xl);
+    font-size: 1.0625rem;
+  }
+  .btn-primary {
+    background-color: var(--color-primary);
+    color: white;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+  }
+  .btn-secondary {
+    background-color: var(--color-gray-100);
+    color: var(--color-gray-800);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--color-gray-200);
+  }
+  .btn-ghost {
+    background-color: transparent;
+    color: var(--color-gray-600);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background-color: var(--color-gray-100);
+  }
+  .btn-danger {
+    background-color: var(--color-danger);
+    color: white;
+  }
+
+  .card {
+    background: white;
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-btn-lg);
+  }
+
+  .input {
+    width: 100%;
+    height: 44px;
+    padding: 0 14px;
+    border-radius: var(--radius-btn-md);
+    border: 1px solid var(--color-gray-200);
+    background: white;
+    font-weight: 500;
+    outline: none;
+  }
+  .input:focus {
+    border-color: var(--color-primary);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+}

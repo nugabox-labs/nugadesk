@@ -1,0 +1,25 @@
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+
+# Python
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.venv/
+backend/*.egg-info/
+*.pyc
+
+# Env
+.env
+.env.dev
+.env.prod
+.compose_state
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
