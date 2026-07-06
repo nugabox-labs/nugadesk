@@ -5,13 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .cleanup import purge_expired_soft_deletes
 from .config import get_settings
-from .database import Base, SessionLocal, engine
+from .database import SessionLocal, init_schema
 from .routers import auth, projects, task_categories, todos, version, workspaces
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    init_schema()
     db = SessionLocal()
     try:
         purge_expired_soft_deletes(db)
