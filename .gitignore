@@ -13,7 +13,6 @@ backend/*.egg-info/
 
 # Env
 .env
-.compose_state
 
 # OS
 .DS_Store

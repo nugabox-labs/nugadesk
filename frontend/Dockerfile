@@ -1,18 +1,11 @@
-FROM node:20-alpine AS base
+FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
-
-FROM base AS dev
-COPY . .
-EXPOSE 5173
-CMD ["npm", "run", "dev", "--", "--host"]
-
-FROM base AS build
 COPY . .
 RUN npm run build
 
-FROM nginx:1.27-alpine AS prod
+FROM nginx:1.27-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 RUN chmod -R a+rX /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
