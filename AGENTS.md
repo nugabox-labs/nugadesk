@@ -92,6 +92,13 @@
 - 성공/실패 여부를 텔레그램(`secrets.TELEGRAM_BOT_TOKEN`, 채팅 ID `7758712361`)으로 알림. 이 패턴은 같은 사용자의 다른 프로젝트(`todaytome`)의 `deploy.yml`을 그대로 가져온 것이므로, 다른 프로젝트에도 비슷한 배포 워크플로우가 필요하면 이 파일을 참고해서 재사용할 것.
 - **raw `docker compose` 명령을 직접 쓰지 않고 반드시 `./compose.sh`를 통해 배포한다** — `compose.sh`가 `VERSION`/git 커밋을 환경변수로 주입해야 헤더 버전 뱃지가 올바르게 표시되기 때문 (9번 참고).
 - 이 워크플로우가 실제로 동작하려면 NAS에 저장소가 미리 clone되어 있고, `.env` 파일이 배포 디렉터리에 이미 존재하며, `nugacloud` 라벨의 self-hosted 러너가 등록되어 있어야 한다 — 이 세 가지는 에이전트가 직접 확인할 수 없으므로 배포 실패 시 가장 먼저 의심할 것.
+- `*.md`/`.gitignore`만 바뀐 push는 `paths-ignore`로 아예 트리거되지 않는다 (2026-07-06 추가, 불필요한 CI 시간 절약 목적). 빌드에 영향 없는 파일을 추가로 무시하고 싶으면 이 목록에 추가할 것.
+
+## 8.2 알려진 함정: 운영 모드 다중 워커와 스키마 생성 경합
+
+- 운영 모드(`backend/Dockerfile`의 `prod` 스테이지)는 `uvicorn --workers 2`로 뜬다. 각 워커가 FastAPI `lifespan`을 독립적으로 실행하므로, `Base.metadata.create_all()`을 그냥 호출하면 **빈 DB에 처음 뜰 때 두 워커가 동시에 같은 테이블을 CREATE하려다 `pg_type_typname_nsp_index` 유니크 제약 위반으로 백엔드가 죽는다** (2026-07-06 실제 운영 서버에서 발생/재현/수정함).
+- 해결: `backend/app/database.py`의 `init_schema()`가 Postgres 세션 단위 advisory lock(`pg_advisory_lock`/`unlock`, 키 `SCHEMA_INIT_LOCK_KEY`)으로 `create_all()`을 감싸 워커 간 스키마 생성을 직렬화한다. **스키마 생성/마이그레이션 관련 코드를 건드릴 때는 이 락을 반드시 유지할 것** — 워커 수를 늘리거나 별도 초기화 스크립트로 바꾸는 경우에도 동시 DDL 경합이 재발하지 않는지 확인해야 한다.
+- 검증 방법: 로컬에서 `docker build --target prod`로 이미지를 만들고, 빈 Postgres 컨테이너에 붙여 재현할 수 있다 (venv로는 재현 안 됨 — 반드시 Docker 이미지로 테스트).
 
 ## 9. 버전 관리 규칙 (항상 준수)
 
