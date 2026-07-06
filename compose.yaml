@@ -17,7 +17,8 @@ services:
     build:
       context: ./backend
     environment:
-      APP_MODE: ${APP_MODE:-prod}
+      # APP_MODE is set per-mode in compose.dev.yaml / compose.prod.yaml, not here or in .env.
+      APP_MODE: prod
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-nugadesk}:${POSTGRES_PASSWORD:-nugadesk}@db:5432/${POSTGRES_DB:-nugadesk}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-env}
       AUTH_USERNAME: ${AUTH_USERNAME:-admin}

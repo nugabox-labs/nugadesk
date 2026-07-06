@@ -24,10 +24,12 @@ EOF
 
 compose_files() {
   local mode="$1"
+  # Single .env for both modes (same file gets copied as-is to the prod server).
+  # dev vs prod is decided purely by which compose override file is loaded here.
   if [[ "$mode" == "dev" ]]; then
-    COMPOSE_ARGS=(-f compose.yaml -f compose.dev.yaml --env-file .env.dev)
+    COMPOSE_ARGS=(-f compose.yaml -f compose.dev.yaml --env-file .env)
   else
-    COMPOSE_ARGS=(-f compose.yaml -f compose.prod.yaml --env-file .env.prod)
+    COMPOSE_ARGS=(-f compose.yaml -f compose.prod.yaml --env-file .env)
   fi
 }
 

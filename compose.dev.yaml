@@ -2,6 +2,8 @@ services:
   backend:
     build:
       target: dev
+    environment:
+      APP_MODE: dev
     volumes:
       - ./backend:/app
     ports:

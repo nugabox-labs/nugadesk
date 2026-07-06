@@ -64,7 +64,7 @@
 - DB: PostgreSQL 17, 마이그레이션은 `Base.metadata.create_all`로 단순화(MVP 단계, alembic 미도입)
 - 인증: **아이디/비밀번호 로그인 + httpOnly 쿠키 세션(JWT)**. "로그인 상태 유지" 체크 시 장기 세션(기본 180일), 미체크 시 단기 세션(기본 12시간). 환경변수 `AUTH_USERNAME`/`AUTH_PASSWORD`로 단일 사용자 자격 증명 관리 (멀티유저/회원가입 없음)
 - 삭제 정책: **소프트 삭제, 30일 보관 후 자동 완전 삭제** (백엔드 기동 시 만료분 정리)
-- 배포: Docker Compose(dev/prod 분리) + `compose.sh`
+- 배포: Docker Compose + `compose.sh`. **`.env` 파일은 dev/prod 공용 단일 파일**(2026-07-06 결정, 아래 9번 참고) — dev/prod 구분은 `compose.sh`가 어떤 compose 오버라이드 파일을 로드하느냐로만 결정한다.
 
 ## 7. 개발 우선순위 및 현재 진행 상태
 
@@ -111,7 +111,8 @@
 ./compose.sh version           # "version : X.Y (commit)" 형식 출력
 ```
 
-- `.env.dev`/`.env.prod`는 gitignore 대상 (실제 값), `.env.dev.example`/`.env.prod.example`만 커밋
+- **`.env`는 dev/prod 공용 단일 파일이다 (2026-07-06 결정).** `.env.dev`/`.env.prod`로 분리하지 않는다 — 사용자가 로컬에서 쓰던 `.env`를 그대로 복사해 운영 서버에 올려 쓰는 워크플로우이기 때문. `.env`는 gitignore 대상(실제 값), `.env.example`만 커밋한다.
+- `APP_MODE`는 `.env`에 두지 않는다. `compose.dev.yaml`은 `APP_MODE: dev`, `compose.prod.yaml`/`compose.yaml` 기본값은 `APP_MODE: prod`로 각 compose 파일에 하드코딩되어 있다. dev/prod 구분은 오직 `compose.sh`가 `--dev` 플래그에 따라 어떤 compose 오버라이드 파일을 붙이느냐로만 결정된다 — `.env` 파일 종류로 구분하지 않는다.
 - 로컬 검증 시 Python 3.14 등 너무 최신 버전에서는 `pydantic-core`/`psycopg` 빌드가 실패할 수 있음 → **로컬 venv보다 Docker(`python:3.12-slim` 기반 이미지)로 검증하는 것을 우선**할 것
 
 ## 11. 로고/파비콘

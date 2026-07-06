@@ -13,8 +13,6 @@ backend/*.egg-info/
 
 # Env
 .env
-.env.dev
-.env.prod
 .compose_state
 
 # OS
