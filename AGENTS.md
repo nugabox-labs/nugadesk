@@ -76,7 +76,6 @@
 
 ## 8. 아직 확인이 필요한 미결정 사항
 
-- [ ] 배포 환경 (Synology NAS 등 기존 인프라 재사용 여부) — 아직 미확인
 - [ ] CalDAV 양방향 동기화 시 충돌 해결 규칙 — 아직 미확인
 - [ ] `git tag` 버전 태그 생성 여부 — 아직 미확인 (현재는 태그 없이 커밋만 진행)
 
@@ -84,6 +83,15 @@
 - 워크스페이스/업무분류/프로젝트 삭제 정책 → 소프트 삭제 30일 보관
 - 인증 방식 → 아이디/비밀번호 + 로그인 상태 유지 체크박스
 - 백엔드 스택 → FastAPI
+- `.env` 파일 정책 → dev/prod 공용 단일 `.env` (아래 9~10번 참고)
+- 배포 환경 → **시놀로지 NAS, self-hosted GitHub Actions 러너**(라벨 `[self-hosted, linux, x64, nugacloud]`) 경유. 배포 대상 디렉터리는 `/volume1/Develop/Sites/nugadesk` (2026-07-06 결정, [.github/workflows/deploy.yml](.github/workflows/deploy.yml) 참고)
+
+## 8.1 배포 워크플로우 (`.github/workflows/deploy.yml`)
+
+- `main` 브랜치에 push되면 self-hosted 러너(NAS)에서 `/volume1/Develop/Sites/nugadesk`로 `git fetch` + `git reset --hard origin/main` 후 `./compose.sh restart`(운영 모드 기본값)로 컨테이너를 재기동한다.
+- 성공/실패 여부를 텔레그램(`secrets.TELEGRAM_BOT_TOKEN`, 채팅 ID `7758712361`)으로 알림. 이 패턴은 같은 사용자의 다른 프로젝트(`todaytome`)의 `deploy.yml`을 그대로 가져온 것이므로, 다른 프로젝트에도 비슷한 배포 워크플로우가 필요하면 이 파일을 참고해서 재사용할 것.
+- **raw `docker compose` 명령을 직접 쓰지 않고 반드시 `./compose.sh`를 통해 배포한다** — `compose.sh`가 `VERSION`/git 커밋을 환경변수로 주입해야 헤더 버전 뱃지가 올바르게 표시되기 때문 (9번 참고).
+- 이 워크플로우가 실제로 동작하려면 NAS에 저장소가 미리 clone되어 있고, `.env` 파일이 배포 디렉터리에 이미 존재하며, `nugacloud` 라벨의 self-hosted 러너가 등록되어 있어야 한다 — 이 세 가지는 에이전트가 직접 확인할 수 없으므로 배포 실패 시 가장 먼저 의심할 것.
 
 ## 9. 버전 관리 규칙 (항상 준수)
 
