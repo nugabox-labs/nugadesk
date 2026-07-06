@@ -85,6 +85,7 @@
 - 백엔드 스택 → FastAPI
 - `.env` 파일 정책 → dev/prod 공용 단일 `.env` (아래 9~10번 참고)
 - 배포 환경 → **시놀로지 NAS, self-hosted GitHub Actions 러너**(라벨 `[self-hosted, linux, x64, nugacloud]`) 경유. 배포 대상 디렉터리는 `/volume1/Develop/Sites/nugadesk` (2026-07-06 결정, [.github/workflows/deploy.yml](.github/workflows/deploy.yml) 참고)
+- 운영 환경 외부 노출 포트 → **호스트 7090** (`compose.prod.yaml`의 frontend가 `7090:80`). 외부에서는 `https://work.nugabox.com` 리버스 프록시(NAS 자체 리버스 프록시, 이 리포 밖에서 설정)가 `http://localhost:7090`으로 연결한다. 그래서 `.env`의 `CORS_ORIGINS`에는 로컬 개발용 `http://localhost:5173`와 운영 도메인 `https://work.nugabox.com`을 **둘 다 콤마로 나열**해야 한다 (`.env`는 dev/prod 공용 단일 파일이므로) — `.env.example` 참고 (2026-07-06 결정)
 
 ## 8.1 배포 워크플로우 (`.github/workflows/deploy.yml`)
 

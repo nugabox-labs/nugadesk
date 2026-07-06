@@ -12,5 +12,5 @@ services:
     build:
       target: prod
     ports:
-      - "80:80"
+      - "7090:80"
     restart: unless-stopped

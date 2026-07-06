@@ -40,7 +40,7 @@ cp .env.example .env   # 값 수정 후 사용. 이후 이 .env 파일을 그대
 ./compose.sh up
 ```
 
-- 프론트엔드(정적 서빙 + API 리버스 프록시): http://localhost
+- 프론트엔드(정적 서빙 + API 리버스 프록시): http://localhost:7090 (`https://work.nugabox.com` → `http://localhost:7090` 리버스 프록시로 서비스)
 - 백엔드: http://localhost:8000
 
 ## compose.sh 명령어
