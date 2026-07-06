@@ -133,4 +133,4 @@
 
 ## 11. 로고/파비콘
 
-- `appicon.png`(리포 루트)가 유일한 브랜드 아이콘 소스. `frontend/public/`에 `favicon.png`, `favicon-32.png`, `apple-touch-icon.png`, `logo-192.png`로 리사이즈되어 있으며(`sips` 사용), 헤더 로고와 로그인 화면 로고는 `logo-192.png`를 사용한다. 아이콘을 교체할 때는 이 파생 파일들을 전부 다시 생성해야 한다.
+- `frontend/public/appicon.png`가 유일한 브랜드 아이콘 소스(2026-07-06부로 리포 루트에서 `frontend/public/`로 이동 — 다른 파생 아이콘들과 같은 위치에 둔다). 원본 바깥의 투명 여백은 제거(alpha bbox 기준 crop 후 정사각형으로 리사이즈)해 아이콘이 캔버스에 꽉 차도록 만들어 두었다. 같은 디렉터리에 `favicon.png`, `favicon-32.png`, `apple-touch-icon.png`, `logo-192.png`로 리사이즈되어 있으며, 헤더 로고와 로그인 화면 로고는 `logo-192.png`를 사용한다. 아이콘을 교체할 때는 새 원본도 투명 여백 없이 꽉 차게 크롭한 뒤 이 파생 파일들을 전부 다시 생성해야 한다.
