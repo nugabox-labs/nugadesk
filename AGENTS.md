@@ -101,6 +101,12 @@
 - 해결: `backend/app/database.py`의 `init_schema()`가 Postgres 세션 단위 advisory lock(`pg_advisory_lock`/`unlock`, 키 `SCHEMA_INIT_LOCK_KEY`)으로 `create_all()`을 감싸 워커 간 스키마 생성을 직렬화한다. **스키마 생성/마이그레이션 관련 코드를 건드릴 때는 이 락을 반드시 유지할 것** — 워커 수를 늘리거나 별도 초기화 스크립트로 바꾸는 경우에도 동시 DDL 경합이 재발하지 않는지 확인해야 한다.
 - 검증 방법: 로컬에서 `docker build --target prod`로 이미지를 만들고, 빈 Postgres 컨테이너에 붙여 재현할 수 있다 (venv로는 재현 안 됨 — 반드시 Docker 이미지로 테스트).
 
+## 8.3 알려진 함정: self-hosted 러너 체크아웃 권한이 프론트엔드 정적 파일 403으로 이어짐
+
+- self-hosted 러너(NAS)에서 `git reset --hard origin/main`으로 체크아웃되는 파일의 권한은 러너 프로세스의 umask에 좌우된다. `frontend/Dockerfile`의 `prod` 스테이지가 `COPY --from=build /app/dist /usr/share/nginx/html`로 파일을 복사할 때 원본 권한 비트를 그대로 유지하므로, 러너의 umask가 제한적이면(예: 그룹/기타 읽기 권한 없음) 이미지 안의 정적 파일이 root만 읽을 수 있는 권한으로 들어갈 수 있다. nginx는 non-root(`nginx`) 워커로 뜨기 때문에 그 파일을 읽지 못해 **해당 파일만 개별적으로 `403 Forbidden`을 반환**한다 (다른 파일은 예전 체크아웃 권한 그대로라 멀쩡해서 특정 파일만 깨진 것처럼 보임 — 2026-07-06 `frontend/public/appicon.png` 등 아이콘 파일 교체 후 실제 운영에서 발생/재현/수정함).
+- 해결: `prod` 스테이지에서 `COPY --from=build` 직후 `RUN chmod -R a+rX /usr/share/nginx/html`로 정적 파일 전체를 강제로 세계-읽기 가능하게 정규화한다. 호스트 체크아웃 권한에 의존하지 않도록 이 단계를 반드시 유지할 것 — 정적 파일 복사/배포 방식을 바꾸는 경우에도 동일한 권한 정규화가 재발하지 않는지 확인해야 한다.
+- 증상으로 의심할 것: 페이지(index.html)와 JS/CSS는 정상 로드되는데 특정 이미지/파일만 브라우저에서 깨진 아이콘으로 보이고, 그 URL을 직접 열면 `403 Forbidden` + `nginx/x.y.z` 서명 페이지가 뜨는 경우.
+
 ## 9. 버전 관리 규칙 (항상 준수)
 
 - 저장소 루트 `VERSION` 파일 하나로 버전 관리. 형식은 `Major.Minor` (패치 버전 없음)
