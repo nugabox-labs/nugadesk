@@ -9,6 +9,7 @@ backend/__pycache__/
 backend/**/__pycache__/
 backend/.venv/
 backend/*.egg-info/
+backend/uploads/
 *.pyc
 
 # Env

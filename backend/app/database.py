@@ -18,10 +18,20 @@ class Base(DeclarativeBase):
     pass
 
 
+# Small, idempotent column widenings for databases created before a model
+# change. We don't use Alembic at this stage, so these run on every boot
+# (guarded by IF EXISTS) instead of a proper migration.
+SCHEMA_PATCHES = [
+    "ALTER TABLE IF EXISTS workspaces ALTER COLUMN icon TYPE VARCHAR(255)",
+]
+
+
 def init_schema() -> None:
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         conn.execute(text("SELECT pg_advisory_lock(:key)"), {"key": SCHEMA_INIT_LOCK_KEY})
         try:
+            for patch in SCHEMA_PATCHES:
+                conn.execute(text(patch))
             Base.metadata.create_all(bind=conn)
         finally:
             conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": SCHEMA_INIT_LOCK_KEY})

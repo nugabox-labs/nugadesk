@@ -1,12 +1,12 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class WorkspaceBase(BaseModel):
     name: str
-    icon: str | None = None
+    icon: str | None = Field(default=None, max_length=255)
     color: str | None = None
     sort_order: int = 0
 
@@ -17,7 +17,7 @@ class WorkspaceCreate(WorkspaceBase):
 
 class WorkspaceUpdate(BaseModel):
     name: str | None = None
-    icon: str | None = None
+    icon: str | None = Field(default=None, max_length=255)
     color: str | None = None
     sort_order: int | None = None
 

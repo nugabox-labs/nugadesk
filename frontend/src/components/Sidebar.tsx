@@ -2,6 +2,7 @@ import clsx from 'clsx'
 import { NavLink } from 'react-router-dom'
 
 import { useWorkspaces } from '../hooks/useWorkspaces'
+import { WorkspaceIcon } from './WorkspaceIcon'
 
 export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () => void }) {
   const { data: workspaces } = useWorkspaces()
@@ -58,10 +59,12 @@ export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () =>
                 className="w-2 h-2 rounded-full shrink-0"
                 style={{ backgroundColor: ws.color ?? '#3182f6' }}
               />
-              <span className="truncate">
-                {ws.icon ? `${ws.icon} ` : ''}
-                {ws.name}
-              </span>
+              <WorkspaceIcon
+                icon={ws.icon}
+                color={ws.color}
+                className="w-4 h-4 rounded-[4px] text-xs"
+              />
+              <span className="truncate">{ws.name}</span>
             </NavLink>
           ))}
         </nav>

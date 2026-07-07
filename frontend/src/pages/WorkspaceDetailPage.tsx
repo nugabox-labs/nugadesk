@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import clsx from 'clsx'
 
 import { Modal } from '../components/Modal'
+import { WorkspaceIcon } from '../components/WorkspaceIcon'
 import {
   useCreateTaskCategory,
   useDeleteTaskCategory,
@@ -200,12 +201,11 @@ export function WorkspaceDetailPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          <div
-            className="w-8 h-8 rounded-[8px] flex items-center justify-center text-lg"
-            style={{ backgroundColor: `${workspace?.color ?? '#3182f6'}22` }}
-          >
-            {workspace?.icon}
-          </div>
+          <WorkspaceIcon
+            icon={workspace?.icon}
+            color={workspace?.color}
+            className="w-8 h-8 rounded-[8px] text-lg"
+          />
           <h1 className="text-2xl font-bold">{workspace?.name}</h1>
         </div>
 

@@ -24,7 +24,7 @@ class Workspace(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    icon: Mapped[str | None] = mapped_column(String(20))
+    icon: Mapped[str | None] = mapped_column(String(255))  # emoji, or an uploaded image URL
     color: Mapped[str | None] = mapped_column(String(20))
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

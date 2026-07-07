@@ -1,14 +1,17 @@
-import { useState } from 'react'
-import type { FormEvent } from 'react'
+import { useRef, useState } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 
 import { Modal } from '../components/Modal'
+import { isImageIcon, WorkspaceIcon } from '../components/WorkspaceIcon'
 import {
   useCreateWorkspace,
   useDeleteWorkspace,
   useUpdateWorkspace,
   useWorkspaces,
 } from '../hooks/useWorkspaces'
+import { useUploadWorkspaceIcon } from '../hooks/useUploads'
+import { ApiError } from '../lib/api'
 import type { Workspace } from '../lib/types'
 
 const COLOR_OPTIONS = ['#3182f6', '#00c896', '#ff9500', '#f04452', '#8b95a1', '#7c5cff']
@@ -27,6 +30,9 @@ function WorkspaceForm({
   const [name, setName] = useState(initial?.name ?? '')
   const [icon, setIcon] = useState(initial?.icon ?? '🗂️')
   const [color, setColor] = useState(initial?.color ?? COLOR_OPTIONS[0])
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const uploadIcon = useUploadWorkspaceIcon()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -34,15 +40,51 @@ function WorkspaceForm({
     onSubmit({ name: name.trim(), icon, color })
   }
 
+  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploadError(null)
+    try {
+      const { url } = await uploadIcon.mutateAsync(file)
+      setIcon(url)
+    } catch (err) {
+      setUploadError(err instanceof ApiError ? err.message : '이미지 업로드에 실패했습니다.')
+    }
+  }
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <div className="flex gap-2">
-        <input
-          className="input w-16 text-center text-xl"
-          value={icon}
-          maxLength={2}
-          onChange={(e) => setIcon(e.target.value)}
+      <div className="flex gap-3 items-start">
+        <WorkspaceIcon
+          icon={icon}
+          color={color}
+          className="w-14 h-14 rounded-[12px] text-2xl border border-gray-200"
         />
+        <div className="flex flex-col gap-1.5">
+          <input
+            className="input h-9 w-16 text-center text-lg"
+            value={isImageIcon(icon) ? '' : icon}
+            maxLength={2}
+            placeholder="🗂️"
+            onChange={(e) => setIcon(e.target.value)}
+          />
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadIcon.isPending}
+          >
+            {uploadIcon.isPending ? '업로드 중...' : '사진 업로드'}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+        </div>
         <input
           className="input flex-1"
           placeholder="워크스페이스 이름"
@@ -52,6 +94,7 @@ function WorkspaceForm({
           required
         />
       </div>
+      {uploadError && <p className="text-sm text-danger">{uploadError}</p>}
       <div className="flex gap-2">
         {COLOR_OPTIONS.map((c) => (
           <button
@@ -100,12 +143,7 @@ export function DashboardPage() {
         {workspaces?.map((ws) => (
           <div key={ws.id} className="card p-5 flex flex-col gap-3 group relative">
             <Link to={`/workspace/${ws.id}`} className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-[10px] flex items-center justify-center text-xl shrink-0"
-                style={{ backgroundColor: `${ws.color ?? '#3182f6'}22` }}
-              >
-                {ws.icon}
-              </div>
+              <WorkspaceIcon icon={ws.icon} color={ws.color} className="w-10 h-10 rounded-[10px] text-xl" />
               <div className="font-bold truncate">{ws.name}</div>
             </Link>
             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
