@@ -43,9 +43,19 @@ starting this.
   `compose.dev.yaml`/`compose.prod.yaml` or a `--dev` flag on `compose.sh`). Local dev without
   Docker: `npm run dev` + `uvicorn app.main:app --reload`. Docker is only for running/testing the
   actual deployed shape.
-- Fixed ports: frontend/nginx `7090`, backend `8000`, Postgres `7097` (all in `compose.yaml`).
+- All host ports `compose.yaml` publishes must stay in **7090-7097** (2026-07-07 decision, avoids
+  colliding with other services on the NAS) — pick the next free number in that range for any new
+  published port. Currently: frontend/nginx `7090`, backend `7091` (container still listens on
+  `8000` internally, only the host-side mapping changed), Postgres `7097`.
   `https://work.nugabox.com` reverse-proxies to the NAS's `localhost:7090` (proxy config lives
-  outside this repo).
+  outside this repo). This range only applies to `compose.yaml`; native local dev
+  (`npm run dev` on `5173`, `uvicorn --reload` on `8000`) isn't a compose-published port and isn't
+  constrained by it.
+- `CORS_ORIGINS` in `.env` must list browser-facing frontend origins, not the backend's own URL:
+  `http://localhost:5173` (native `npm run dev`) and `http://localhost:7090` (local
+  `compose.sh up`) for dev, `https://work.nugabox.com` for prod. In every real workflow here the
+  browser only ever talks to one of these origins (nginx or Vite's dev proxy forwards `/api`
+  server-side), so this rarely actually gets exercised — but keep it correct anyway.
 - DB target is chosen via `.env`'s `DB_HOST`/`DB_PORT` (used to build `DATABASE_URL` in
   `compose.yaml`). Current intent: both local dev and the NAS deployment point at the same
   externally-reachable instance, `nugacloud.synology.me:7097`, not each at their own local `db`

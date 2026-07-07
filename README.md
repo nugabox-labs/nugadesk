@@ -32,9 +32,11 @@ cp .env.example .env   # 값 수정 후 사용. 이후 이 .env 파일을 그대
 ```
 
 - 프론트엔드(정적 서빙 + API 리버스 프록시): http://localhost:7090 (`https://work.nugabox.com` → `http://localhost:7090` 리버스 프록시로 서비스)
-- 백엔드: http://localhost:8000/api/health
+- 백엔드: http://localhost:7091/api/health
 
-로컬에서 코드를 바로바로 확인하며 개발할 때는 컨테이너 대신 `frontend`에서 `npm run dev`, `backend`에서 `uvicorn app.main:app --reload`를 직접 띄우는 방식을 씁니다 (Docker는 배포 형태 그대로를 검증/운영하는 용도).
+`compose.yaml`이 호스트에 여는 포트는 다른 서비스와 겹치지 않도록 전부 `7090`~`7097` 범위 안에서만 고릅니다: 프론트엔드 `7090`, 백엔드 `7091`, Postgres `7097`. 포트를 새로 열 일이 있으면 이 범위 안에서 고르세요.
+
+로컬에서 코드를 바로바로 확인하며 개발할 때는 컨테이너 대신 `frontend`에서 `npm run dev`(`http://localhost:5173`), `backend`에서 `uvicorn app.main:app --reload`(`http://localhost:8000`)를 직접 띄우는 방식을 씁니다 (Docker는 배포 형태 그대로를 검증/운영하는 용도라 포트 범위 제한을 받지 않습니다). 이때 브라우저는 `http://localhost:5173`을 열게 되므로, `.env`의 `CORS_ORIGINS`에도 백엔드 URL이 아니라 **이 프론트엔드 URL**을 넣어야 합니다.
 
 ## compose.sh 명령어
 

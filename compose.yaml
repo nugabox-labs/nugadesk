@@ -28,7 +28,7 @@ services:
       VERSION_OVERRIDE: ${APP_VERSION:-}
       GIT_COMMIT_OVERRIDE: ${APP_GIT_COMMIT:-}
     ports:
-      - "8000:8000"
+      - "7091:8000"
     volumes:
       - uploads:/app/uploads
     depends_on:
