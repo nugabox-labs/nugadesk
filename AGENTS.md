@@ -39,10 +39,16 @@ starting this.
   See `.github/workflows/deploy.yml` — it shells out to `./compose.sh restart`, not raw
   `docker compose`, because `compose.sh` injects `VERSION`/git-commit env vars the container
   can't see on its own (backend only mounts `backend/`, not the repo root).
-- Single `compose.yaml`, no dev/prod split (removed on purpose — don't reintroduce
-  `compose.dev.yaml`/`compose.prod.yaml` or a `--dev` flag on `compose.sh`). Local dev without
-  Docker: `npm run dev` + `uvicorn app.main:app --reload`. Docker is only for running/testing the
-  actual deployed shape.
+- `compose.yaml` is the single source of truth for the deployed shape (used as-is for
+  `compose.sh up`, i.e. prod). `compose.dev.yaml` (2026-07-07, reintroduced) is a *thin* overlay
+  loaded only via `compose.sh --dev` — it only adds source bind-mounts + swaps the run command
+  (`uvicorn --reload`, `vite dev`) via `frontend/Dockerfile`'s `dev` build stage. It deliberately
+  does **not** touch `ports:` (Vite is told to run on `--port 80` inside the container so the
+  existing `7090:80` mapping still applies — don't add a second `ports:` entry for frontend/backend
+  in `compose.dev.yaml`, Compose appends port lists across files instead of replacing them and two
+  bindings for the same host port will fail). There is intentionally no `compose.prod.yaml` — prod
+  is just `compose.yaml` alone. Native dev without Docker at all (`npm run dev` on `5173`,
+  `uvicorn --reload` on `8000` directly) still works too and is even lighter than `--dev`.
 - All host ports `compose.yaml` publishes must stay in **7090-7097** (2026-07-07 decision, avoids
   colliding with other services on the NAS) — pick the next free number in that range for any new
   published port. Currently: frontend/nginx `7090`, backend `7091` (container still listens on
