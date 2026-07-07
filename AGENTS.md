@@ -21,7 +21,15 @@ memo kanban, iCloud sync, cross-workspace dashboard aggregate view.
 - Never install the actual Toss Design System npm package (private scope, App-in-Toss-partner
   license only). Only its public design tokens may be reused (`#3182f6` primary, 8/10/14/16px
   radii, 32/38/48/56px button heights) inside our own Tailwind theme.
-- Font is Pretendard (Toss Product Sans is private). No dark mode.
+- Font is Pretendard (Toss Product Sans is private).
+- Dark mode (2026-07-07 decision): system/light/dark toggle in `Header.tsx`, state in
+  `store/theme.ts`, persisted to `localStorage['nugadesk-theme']`. Implemented by overriding
+  Tailwind's own CSS variables (`--color-white`, `--color-gray-*`) under an `html.dark` selector
+  in `index.css` — existing `bg-white`/`text-gray-*`/`border-gray-*` utilities re-theme
+  automatically, no per-component `dark:` classes needed. Dark surfaces use Toss Gray `#202632`
+  (brand charcoal, not pure black). `index.html` has an inline pre-hydration script that reads the
+  same localStorage key to set the `dark` class before first paint (avoids a flash) — keep it in
+  sync with `store/theme.ts` if the storage key or fallback logic changes.
 - Header badge (`{version} Dev` red / `{version}` black) is fetched at runtime from
   `GET /api/version` — never bake version/mode into the frontend build.
 

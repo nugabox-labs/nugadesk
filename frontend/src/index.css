@@ -34,6 +34,12 @@
   body {
     height: 100%;
   }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
   body {
     margin: 0;
     font-family: var(--font-sans);
@@ -41,12 +47,37 @@
     color: var(--color-gray-900);
     background-color: var(--color-gray-50);
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.15s ease, color 0.15s ease;
   }
   #root {
     height: 100%;
   }
   * {
     box-sizing: border-box;
+  }
+
+  /*
+   * Dark theme: override the same CSS variables the light @theme block defines
+   * (including Tailwind's own --color-white) so every existing bg-white /
+   * text-gray-* / border-gray-* utility re-themes without per-component edits.
+   * --color-white doubles as the "surface" color (header/sidebar/card/input);
+   * it intentionally sits lighter than --color-gray-50 (page canvas) and
+   * --color-gray-100 (hover/track), matching Toss's charcoal dark UI look.
+   */
+  html.dark {
+    --color-white: #202632;
+    --color-gray-50: #14171d;
+    --color-gray-100: #1a1f28;
+    --color-gray-200: #2b3242;
+    --color-gray-300: #333d4b;
+    --color-gray-400: #4e5968;
+    --color-gray-500: #6b7684;
+    --color-gray-600: #8b95a1;
+    --color-gray-700: #b0b8c1;
+    --color-gray-800: #d1d6db;
+    --color-gray-900: #f2f4f6;
+
+    --color-primary-light: rgba(49, 130, 246, 0.18);
   }
 }
 
@@ -112,7 +143,7 @@
   }
 
   .card {
-    background: white;
+    background: var(--color-white);
     border: 1px solid var(--color-gray-200);
     border-radius: var(--radius-btn-lg);
   }
@@ -123,7 +154,7 @@
     padding: 0 14px;
     border-radius: var(--radius-btn-md);
     border: 1px solid var(--color-gray-200);
-    background: white;
+    background: var(--color-white);
     font-weight: 500;
     outline: none;
   }

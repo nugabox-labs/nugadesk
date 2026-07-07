@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 
 import { useLogout } from '../hooks/useAuth'
 import { useAuthStore } from '../store/auth'
+import { ThemeToggle } from './ThemeToggle'
 import { VersionBadge } from './VersionBadge'
 
 export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
@@ -34,6 +35,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
 
       <div className="flex items-center gap-2">
         {username && <span className="text-sm text-gray-600 hidden sm:inline">{username}</span>}
+        <ThemeToggle />
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => logout.mutate()}>
           로그아웃
         </button>
