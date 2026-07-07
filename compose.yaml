@@ -5,6 +5,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-nugadesk}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nugadesk}
       POSTGRES_DB: ${POSTGRES_DB:-nugadesk}
+    ports:
+      - "7097:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -18,7 +20,7 @@ services:
       context: ./backend
     environment:
       APP_MODE: ${APP_MODE:-prod}
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-nugadesk}:${POSTGRES_PASSWORD:-nugadesk}@db:5432/${POSTGRES_DB:-nugadesk}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-nugadesk}:${POSTGRES_PASSWORD:-nugadesk}@${DB_HOST:-db}:${DB_PORT:-5432}/${POSTGRES_DB:-nugadesk}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-env}
       AUTH_USERNAME: ${AUTH_USERNAME:-admin}
       AUTH_PASSWORD: ${AUTH_PASSWORD:-change-me}
