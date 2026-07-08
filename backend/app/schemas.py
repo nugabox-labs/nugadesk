@@ -4,79 +4,34 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class WorkspaceBase(BaseModel):
+class CategoryBase(BaseModel):
     name: str
     icon: str | None = Field(default=None, max_length=255)
     color: str | None = None
+    icloud_list_uid: str | None = None
+    icloud_list_name: str | None = None
     sort_order: int = 0
 
 
-class WorkspaceCreate(WorkspaceBase):
-    pass
+class CategoryCreate(CategoryBase):
+    parent_id: uuid.UUID | None = None
 
 
-class WorkspaceUpdate(BaseModel):
+class CategoryUpdate(BaseModel):
     name: str | None = None
     icon: str | None = Field(default=None, max_length=255)
     color: str | None = None
+    icloud_list_uid: str | None = None
+    icloud_list_name: str | None = None
     sort_order: int | None = None
 
 
-class WorkspaceOut(WorkspaceBase):
+class CategoryOut(CategoryBase):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
+    parent_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime
-
-
-class TaskCategoryBase(BaseModel):
-    name: str
-    icloud_list_uid: str | None = None
-    icloud_list_name: str | None = None
-    sort_order: int = 0
-
-
-class TaskCategoryCreate(TaskCategoryBase):
-    pass
-
-
-class TaskCategoryUpdate(BaseModel):
-    name: str | None = None
-    icloud_list_uid: str | None = None
-    icloud_list_name: str | None = None
-    sort_order: int | None = None
-
-
-class TaskCategoryOut(TaskCategoryBase):
-    model_config = ConfigDict(from_attributes=True)
-    id: uuid.UUID
-    workspace_id: uuid.UUID
-    created_at: datetime
-
-
-class ProjectBase(BaseModel):
-    name: str
-    description: str | None = None
-    status: str = "active"
-    sort_order: int = 0
-
-
-class ProjectCreate(ProjectBase):
-    pass
-
-
-class ProjectUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
-    status: str | None = None
-    sort_order: int | None = None
-
-
-class ProjectOut(ProjectBase):
-    model_config = ConfigDict(from_attributes=True)
-    id: uuid.UUID
-    task_category_id: uuid.UUID
-    created_at: datetime
 
 
 class TodoBase(BaseModel):
@@ -104,22 +59,20 @@ class TodoUpdate(BaseModel):
 class TodoOut(TodoBase):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
-    project_id: uuid.UUID
+    category_id: uuid.UUID
     completed_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
 
-class ProjectTreeOut(ProjectOut):
+class CategoryTreeOut(CategoryOut):
+    children: list["CategoryTreeOut"] = []
     todos: list[TodoOut] = []
+    todo_count: int = 0
+    done_count: int = 0
 
 
-class TaskCategoryTreeOut(TaskCategoryOut):
-    projects: list[ProjectTreeOut] = []
-
-
-class WorkspaceTreeOut(WorkspaceOut):
-    task_categories: list[TaskCategoryTreeOut] = []
+CategoryTreeOut.model_rebuild()
 
 
 class LoginRequest(BaseModel):

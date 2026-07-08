@@ -1,38 +1,21 @@
-export interface Workspace {
+export interface Category {
   id: string
+  parent_id: string | null
   name: string
   icon: string | null
   color: string | null
-  sort_order: number
-  created_at: string
-  updated_at: string
-}
-
-export interface TaskCategory {
-  id: string
-  workspace_id: string
-  name: string
   icloud_list_uid: string | null
   icloud_list_name: string | null
   sort_order: number
   created_at: string
-}
-
-export interface Project {
-  id: string
-  task_category_id: string
-  name: string
-  description: string | null
-  status: 'active' | 'archived'
-  sort_order: number
-  created_at: string
+  updated_at: string
 }
 
 export type TodoStatus = 'todo' | 'in_progress' | 'done'
 
 export interface Todo {
   id: string
-  project_id: string
+  category_id: string
   title: string
   notes: string | null
   due_date: string | null
@@ -44,16 +27,11 @@ export interface Todo {
   updated_at: string
 }
 
-export interface ProjectTree extends Project {
+export interface CategoryTree extends Category {
+  children: CategoryTree[]
   todos: Todo[]
-}
-
-export interface TaskCategoryTree extends TaskCategory {
-  projects: ProjectTree[]
-}
-
-export interface WorkspaceTree extends Workspace {
-  task_categories: TaskCategoryTree[]
+  todo_count: number
+  done_count: number
 }
 
 export interface VersionInfo {

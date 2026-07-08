@@ -9,17 +9,47 @@ and open decisions.
 Personal task manager (Notion-style free memos + Jira-style kanban), desktop-first, single user,
 no signup/multi-user support planned.
 
-Fixed hierarchy, don't restructure: **Workspace → Task Category (1:1 with an iCloud Reminders
-list) → Project (internal only, no iCloud concept) → Todo (1:1 with an iCloud Reminders item)**.
-The iCloud mapping isn't implemented yet (see below) but the hierarchy is designed around it.
+**Hierarchy (2026-07-08 redesign, supersedes the earlier fixed 4-level Workspace > Task Category
+> Project > Todo model — that model is gone, don't resurrect it):** a single recursive **분류
+(Category)** node — self-referential (`parent_id`), unbounded depth — plus a leaf **할일 (Todo)**.
+Modeled after Apple Reminders' List Group / List split:
+- A 분류 can have child 분류 nodes (nesting freely), **unless** it's mapped to an iCloud Reminders
+  list (`icloud_list_uid`/`icloud_list_name` set) — a mapped 분류 becomes a leaf and cannot have
+  child 분류, mirroring the fact that a real iCloud list can't contain sub-lists. Enforced in
+  `backend/app/routers/categories.py` (`create_category` rejects nesting under a mapped parent;
+  `update_category` rejects mapping a 분류 that already has children), mirrored client-side in
+  `CategoryFormModal.tsx` (disables the iCloud field with an explanation when the 분류 has
+  children) so the user never hits the 400 in normal use.
+- A 할일 can be created directly inside **any** 분류 — mapped or not, leaf or not, top-level or
+  nested. `Todo.category_id` points at whichever 분류 it was added to.
+- Top-level 분류 (`parent_id IS NULL`) carry `icon`/`color` for visual identity (replaces the old
+  Workspace concept 1:1 — same rows, just renamed/reparented in the 2026-07-08 migration).
+- The iCloud list field is currently a **free-text name input**, not a real select — the user
+  asked for a select-from-your-actual-lists dropdown, but that requires the CalDAV integration
+  below (still not started), so there's nothing to populate a real select with yet. Revisit once
+  that lands.
 
-Status: workspace/category/project/todo CRUD + kanban/list views done. Dashboard (`/`) is now a
-cross-workspace aggregate view — every workspace's full task-category > project > todo tree
-renders inline (2026-07-08 decision: user wants everything visible at a glance, not click-through
-per level), backed by a single `GET /api/dashboard` query (`backend/app/routers/dashboard.py`,
-`selectinload` all four levels in one round trip) rather than per-level requests. Any mutation
-hook touching workspaces/categories/projects/todos must also invalidate the `['dashboard']` query
-key or this view goes stale — see `frontend/src/hooks/use{Workspaces,TaskCategories,Projects,Todos}.ts`.
+Status: 분류/할일 CRUD done, no kanban status columns anymore (dropped in the 2026-07-08 redesign
+in favor of a flat Reminders-style checklist — a single done/not-done circular checkbox per todo,
+`.checkbox-circle` in `index.css`). Dashboard (`/`) renders the full recursive tree for every
+top-level 분류 at once (2026-07-08 decision: user wants everything visible at a glance, not
+click-through per level) via one `GET /api/dashboard` call — two flat queries (all categories, all
+todos) assembled into a tree + bottom-up `todo_count`/`done_count` rollup in Python
+(`backend/app/routers/dashboard.py`), not a recursive CTE. `/category/:id` is a focused view of
+one subtree (breadcrumb + same recursive renderer, `components/CategoryNode.tsx`) reusing the same
+`['dashboard']` query rather than a separate fetch. Any mutation touching categories/todos must
+invalidate `['dashboard']` — see `frontend/src/hooks/use{Categories,Todos}.ts` — since it's the
+only cache holding this data (no more per-level list endpoints/queries).
+
+**Legacy schema migration:** `backend/app/database.py::_migrate_legacy_hierarchy()` runs once on
+boot (idempotent, guarded by an existence check) to convert an old
+workspaces/task_categories/projects/todos DB into the new `categories` table + `todos.category_id`
+— see the function's docstring. Deliberately additive/non-destructive: old tables and the old
+`todos.project_id` column are **not dropped**, kept as an inert backup since there's no
+Alembic/rollback tooling in this project and it runs unattended against the only copy of
+production data. Safe to drop them by hand later once the migrated data is confirmed correct in
+prod — not done automatically.
+
 Not started: workspace memo kanban, iCloud sync.
 
 ## Constraints
@@ -103,6 +133,13 @@ starting this.
   static files root-only-readable; `COPY --from=build` preserves that, and non-root nginx then
   403s on just that one file. Fixed with `chmod -R a+rX` after the copy in
   `frontend/Dockerfile` — keep it.
+- **No Alembic**: schema changes are hand-written idempotent SQL in `database.py::init_schema()`
+  (`SCHEMA_PATCHES` for simple column tweaks, `_migrate_legacy_hierarchy()` for the one-off
+  2026-07-08 hierarchy migration) run on every boot behind the advisory lock above, not a real
+  migration framework. If you change `models.py` in a way that isn't a fresh `CREATE TABLE`
+  (renaming/dropping a column on a table that already exists in prod), you need to hand-write the
+  same kind of additive, idempotent, existence-checked SQL — don't assume `create_all()` will
+  handle it, it only creates tables that don't exist yet and never alters existing ones.
 
 ## Version bump procedure
 

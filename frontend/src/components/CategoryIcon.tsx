@@ -4,7 +4,7 @@ export function isImageIcon(icon: string | null | undefined): boolean {
   return !!icon && (icon.startsWith('/api/') || icon.startsWith('http://') || icon.startsWith('https://'))
 }
 
-export function WorkspaceIcon({
+export function CategoryIcon({
   icon,
   color,
   className,

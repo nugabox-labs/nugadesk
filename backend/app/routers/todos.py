@@ -2,14 +2,13 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import Todo
 from ..schemas import TodoCreate, TodoOut, TodoUpdate
 from ..security import require_session
-from .projects import _get_project_or_404
+from .categories import _get_category_or_404
 
 router = APIRouter(tags=["todos"], dependencies=[Depends(require_session)])
 
@@ -21,24 +20,13 @@ def _get_todo_or_404(db: Session, todo_id: uuid.UUID) -> Todo:
     return todo
 
 
-@router.get("/api/projects/{project_id}/todos", response_model=list[TodoOut])
-def list_todos(project_id: uuid.UUID, db: Session = Depends(get_db)):
-    _get_project_or_404(db, project_id)
-    stmt = (
-        select(Todo)
-        .where(Todo.project_id == project_id, Todo.deleted_at.is_(None))
-        .order_by(Todo.sort_order)
-    )
-    return db.scalars(stmt).all()
-
-
-@router.post("/api/projects/{project_id}/todos", response_model=TodoOut, status_code=201)
-def create_todo(project_id: uuid.UUID, payload: TodoCreate, db: Session = Depends(get_db)):
-    _get_project_or_404(db, project_id)
+@router.post("/api/categories/{category_id}/todos", response_model=TodoOut, status_code=201)
+def create_todo(category_id: uuid.UUID, payload: TodoCreate, db: Session = Depends(get_db)):
+    _get_category_or_404(db, category_id)
     data = payload.model_dump()
     if data.get("status") == "done":
         data["completed_at"] = datetime.now(timezone.utc)
-    todo = Todo(project_id=project_id, **data)
+    todo = Todo(category_id=category_id, **data)
     db.add(todo)
     db.commit()
     db.refresh(todo)

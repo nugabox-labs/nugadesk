@@ -6,7 +6,7 @@ interface UploadResult {
   url: string
 }
 
-export function useUploadWorkspaceIcon() {
+export function useUploadCategoryIcon() {
   return useMutation({
     mutationFn: (file: File) => {
       const formData = new FormData()
