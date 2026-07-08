@@ -21,9 +21,75 @@ class Base(DeclarativeBase):
 # Small, idempotent column widenings for databases created before a model
 # change. We don't use Alembic at this stage, so these run on every boot
 # (guarded by IF EXISTS) instead of a proper migration.
-SCHEMA_PATCHES = [
-    "ALTER TABLE IF EXISTS workspaces ALTER COLUMN icon TYPE VARCHAR(255)",
-]
+SCHEMA_PATCHES: list[str] = []
+
+
+def _migrate_legacy_hierarchy(conn) -> None:
+    """One-time upgrade from the old fixed Workspace > TaskCategory > Project > Todo
+    schema (2026-07-08 and earlier) to the recursive `categories` self-join
+    (2026-07-08 분류 redesign). No-ops on a fresh install (no `workspaces` table)
+    or once already migrated (`todos.category_id` already exists).
+
+    Deliberately additive/non-destructive: old tables and the old
+    `todos.project_id` column are left in place as an inert backup rather than
+    dropped, since this runs unattended against the only copy of production
+    data and there's no Alembic/rollback tooling in this project yet.
+    """
+    has_legacy = conn.execute(text("SELECT to_regclass('public.workspaces')")).scalar()
+    if has_legacy is None:
+        return
+
+    already_migrated = conn.execute(
+        text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = 'todos' AND column_name = 'category_id'"
+        )
+    ).scalar()
+    if already_migrated:
+        return
+
+    conn.execute(
+        text(
+            "INSERT INTO categories "
+            "(id, parent_id, name, icon, color, icloud_list_uid, icloud_list_name, "
+            " sort_order, created_at, updated_at, deleted_at) "
+            "SELECT id, NULL, name, icon, color, NULL, NULL, "
+            "       sort_order, created_at, updated_at, deleted_at "
+            "FROM workspaces "
+            "ON CONFLICT (id) DO NOTHING"
+        )
+    )
+    conn.execute(
+        text(
+            "INSERT INTO categories "
+            "(id, parent_id, name, icon, color, icloud_list_uid, icloud_list_name, "
+            " sort_order, created_at, updated_at, deleted_at) "
+            "SELECT id, workspace_id, name, NULL, NULL, icloud_list_uid, icloud_list_name, "
+            "       sort_order, created_at, updated_at, deleted_at "
+            "FROM task_categories "
+            "ON CONFLICT (id) DO NOTHING"
+        )
+    )
+    conn.execute(
+        text(
+            "INSERT INTO categories "
+            "(id, parent_id, name, icon, color, icloud_list_uid, icloud_list_name, "
+            " sort_order, created_at, updated_at, deleted_at) "
+            "SELECT id, task_category_id, name, NULL, NULL, NULL, NULL, "
+            "       sort_order, created_at, updated_at, deleted_at "
+            "FROM projects "
+            "ON CONFLICT (id) DO NOTHING"
+        )
+    )
+    conn.execute(text("ALTER TABLE todos ADD COLUMN IF NOT EXISTS category_id UUID"))
+    conn.execute(text("UPDATE todos SET category_id = project_id WHERE category_id IS NULL"))
+    conn.execute(text("ALTER TABLE todos ALTER COLUMN category_id SET NOT NULL"))
+    conn.execute(
+        text(
+            "ALTER TABLE todos ADD CONSTRAINT todos_category_id_fkey "
+            "FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE"
+        )
+    )
 
 
 def init_schema() -> None:
@@ -33,6 +99,11 @@ def init_schema() -> None:
             for patch in SCHEMA_PATCHES:
                 conn.execute(text(patch))
             Base.metadata.create_all(bind=conn)
+            # Real transaction (not the AUTOCOMMIT connection above, which
+            # can't provide atomicity across statements) so the multi-step
+            # data migration is all-or-nothing.
+            with engine.begin() as txn_conn:
+                _migrate_legacy_hierarchy(txn_conn)
         finally:
             conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": SCHEMA_INIT_LOCK_KEY})
 

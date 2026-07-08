@@ -1,30 +1,24 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { api } from '../lib/api'
 import type { Todo, TodoStatus } from '../lib/types'
 
-export function useTodos(projectId: string | undefined) {
-  return useQuery({
-    queryKey: ['projects', projectId, 'todos'],
-    queryFn: () => api.get<Todo[]>(`/projects/${projectId}/todos`),
-    enabled: !!projectId,
-  })
+function useInvalidateDashboard() {
+  const queryClient = useQueryClient()
+  return () => queryClient.invalidateQueries({ queryKey: ['dashboard'] })
 }
 
-export function useCreateTodo(projectId: string | undefined) {
-  const queryClient = useQueryClient()
+export function useCreateTodo(categoryId: string | undefined) {
+  const invalidate = useInvalidateDashboard()
   return useMutation({
     mutationFn: (payload: { title: string; notes?: string; due_date?: string; priority?: number }) =>
-      api.post<Todo>(`/projects/${projectId}/todos`, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'todos'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-    },
+      api.post<Todo>(`/categories/${categoryId}/todos`, payload),
+    onSuccess: invalidate,
   })
 }
 
-export function useUpdateTodo(projectId: string | undefined) {
-  const queryClient = useQueryClient()
+export function useUpdateTodo() {
+  const invalidate = useInvalidateDashboard()
   return useMutation({
     mutationFn: ({
       id,
@@ -38,20 +32,14 @@ export function useUpdateTodo(projectId: string | undefined) {
       status?: TodoStatus
       sort_order?: number
     }) => api.patch<Todo>(`/todos/${id}`, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'todos'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-    },
+    onSuccess: invalidate,
   })
 }
 
-export function useDeleteTodo(projectId: string | undefined) {
-  const queryClient = useQueryClient()
+export function useDeleteTodo() {
+  const invalidate = useInvalidateDashboard()
   return useMutation({
     mutationFn: (id: string) => api.delete(`/todos/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects', projectId, 'todos'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-    },
+    onSuccess: invalidate,
   })
 }

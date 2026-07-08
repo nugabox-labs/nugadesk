@@ -172,4 +172,24 @@
     font-weight: 700;
     letter-spacing: 0.02em;
   }
+
+  .checkbox-circle {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    border: 2px solid var(--color-gray-300);
+    background-color: var(--color-white);
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+  .checkbox-circle:checked {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 65%;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M3.5 8.5L6.5 11.5L12.5 4.5' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
 }

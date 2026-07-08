@@ -19,29 +19,23 @@ def uuid_pk():
     return mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
 
-class Workspace(Base):
-    __tablename__ = "workspaces"
+class Category(Base):
+    """Recursive 분류 node — mirrors Apple Reminders' List Group / List split:
+    a category can nest child categories UNLESS it's mapped to an iCloud
+    Reminders list (icloud_list_uid/name set), in which case it's a leaf that
+    holds todos directly, just like a real iCloud list can't contain sub-lists.
+    Enforced in routers/categories.py, not at the DB level.
+    """
+
+    __tablename__ = "categories"
 
     id: Mapped[uuid.UUID] = uuid_pk()
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="CASCADE"), nullable=True
+    )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     icon: Mapped[str | None] = mapped_column(String(255))  # emoji, or an uploaded image URL
     color: Mapped[str | None] = mapped_column(String(20))
-    sort_order: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
-    deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
-
-    task_categories: Mapped[list["TaskCategory"]] = relationship(
-        back_populates="workspace", cascade="all, delete-orphan", order_by="TaskCategory.sort_order"
-    )
-
-
-class TaskCategory(Base):
-    __tablename__ = "task_categories"
-
-    id: Mapped[uuid.UUID] = uuid_pk()
-    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"))
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
     icloud_list_uid: Mapped[str | None] = mapped_column(String(255))
     icloud_list_name: Mapped[str | None] = mapped_column(String(100))
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
@@ -49,30 +43,12 @@ class TaskCategory(Base):
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
     deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
-    workspace: Mapped["Workspace"] = relationship(back_populates="task_categories")
-    projects: Mapped[list["Project"]] = relationship(
-        back_populates="task_category", cascade="all, delete-orphan", order_by="Project.sort_order"
+    children: Mapped[list["Category"]] = relationship(
+        back_populates="parent", cascade="all, delete-orphan", order_by="Category.sort_order"
     )
-
-
-class Project(Base):
-    __tablename__ = "projects"
-
-    id: Mapped[uuid.UUID] = uuid_pk()
-    task_category_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("task_categories.id", ondelete="CASCADE")
-    )
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    description: Mapped[str | None] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(20), default="active")
-    sort_order: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
-    deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
-
-    task_category: Mapped["TaskCategory"] = relationship(back_populates="projects")
+    parent: Mapped["Category | None"] = relationship(back_populates="children", remote_side=[id])
     todos: Mapped[list["Todo"]] = relationship(
-        back_populates="project", cascade="all, delete-orphan", order_by="Todo.sort_order"
+        back_populates="category", cascade="all, delete-orphan", order_by="Todo.sort_order"
     )
 
 
@@ -80,7 +56,7 @@ class Todo(Base):
     __tablename__ = "todos"
 
     id: Mapped[uuid.UUID] = uuid_pk()
-    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    category_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("categories.id", ondelete="CASCADE"))
     icloud_todo_uid: Mapped[str | None] = mapped_column(String(255))
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
@@ -94,4 +70,4 @@ class Todo(Base):
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
     deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
-    project: Mapped["Project"] = relationship(back_populates="todos")
+    category: Mapped["Category"] = relationship(back_populates="todos")

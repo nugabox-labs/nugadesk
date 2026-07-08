@@ -1,11 +1,11 @@
 import clsx from 'clsx'
 import { NavLink } from 'react-router-dom'
 
-import { useWorkspaces } from '../hooks/useWorkspaces'
-import { WorkspaceIcon } from './WorkspaceIcon'
+import { useDashboardTree } from '../hooks/useDashboard'
+import { CategoryIcon } from './CategoryIcon'
 
 export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () => void }) {
-  const { data: workspaces } = useWorkspaces()
+  const { data: categories } = useDashboardTree()
 
   return (
     <>
@@ -40,13 +40,13 @@ export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () =>
         </nav>
 
         <div className="px-3 pt-2 pb-1 text-xs font-bold text-gray-400 uppercase tracking-wide">
-          워크스페이스
+          분류
         </div>
         <nav className="px-3 flex flex-col gap-1 pb-4">
-          {workspaces?.map((ws) => (
+          {categories?.map((category) => (
             <NavLink
-              key={ws.id}
-              to={`/workspace/${ws.id}`}
+              key={category.id}
+              to={`/category/${category.id}`}
               onClick={onNavigate}
               className={({ isActive }) =>
                 clsx(
@@ -57,14 +57,14 @@ export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () =>
             >
               <span
                 className="w-2 h-2 rounded-full shrink-0"
-                style={{ backgroundColor: ws.color ?? '#3182f6' }}
+                style={{ backgroundColor: category.color ?? '#3182f6' }}
               />
-              <WorkspaceIcon
-                icon={ws.icon}
-                color={ws.color}
+              <CategoryIcon
+                icon={category.icon}
+                color={category.color}
                 className="w-4 h-4 rounded-[4px] text-xs"
               />
-              <span className="truncate">{ws.name}</span>
+              <span className="truncate">{category.name}</span>
             </NavLink>
           ))}
         </nav>
