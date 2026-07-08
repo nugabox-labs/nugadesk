@@ -16,8 +16,10 @@ export function useCreateTaskCategory(workspaceId: string | undefined) {
   return useMutation({
     mutationFn: (payload: { name: string; icloud_list_name?: string }) =>
       api.post<TaskCategory>(`/workspaces/${workspaceId}/task-categories`, payload),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'task-categories'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'task-categories'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
 }
 
@@ -26,8 +28,10 @@ export function useUpdateTaskCategory(workspaceId: string | undefined) {
   return useMutation({
     mutationFn: ({ id, ...payload }: { id: string; name?: string }) =>
       api.patch<TaskCategory>(`/task-categories/${id}`, payload),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'task-categories'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'task-categories'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
 }
 
@@ -35,7 +39,9 @@ export function useDeleteTaskCategory(workspaceId: string | undefined) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.delete(`/task-categories/${id}`),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'task-categories'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId, 'task-categories'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
 }

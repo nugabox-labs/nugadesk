@@ -62,15 +62,58 @@ jobs:
 
           cd "$DEPLOY_DIR"
 
+          PREV_SHA="$(git rev-parse HEAD)"
+
           step_time "git sync start"
           git fetch origin main
           git reset --hard origin/main
           CUR="$(git rev-parse HEAD)"
           step_time "git sync done"
 
-          step_time "container restart start"
-          ./compose.sh restart
-          step_time "container restart done"
+          # 정적 파일 하나만 바뀌어도 매번 backend/frontend 이미지를 전부 새로
+          # 빌드+재기동하면 배포가 불필요하게 오래 걸린다. 실제로 바뀐 경로만 보고
+          # 해당 서비스만 재기동한다. compose 설정 자체가 바뀌면 안전하게 전체 재기동.
+          FULL_RESTART=false
+          FRONTEND_CHANGED=false
+          BACKEND_CHANGED=false
+
+          if [[ "$PREV_SHA" == "$CUR" ]]; then
+            step_time "no new commits — restart skipped"
+          else
+            CHANGED="$(git diff --name-only "$PREV_SHA" "$CUR")"
+            echo "[deploy] changed files since last deploy ($PREV_SHA -> $CUR):"
+            echo "$CHANGED"
+
+            while IFS= read -r f; do
+              [[ -z "$f" ]] && continue
+              case "$f" in
+                compose.yaml|compose.sh|compose.dev.yaml|.env.example|.github/workflows/deploy.yml)
+                  FULL_RESTART=true ;;
+                frontend/*)
+                  FRONTEND_CHANGED=true ;;
+                backend/*|VERSION)
+                  BACKEND_CHANGED=true ;;
+              esac
+            done <<< "$CHANGED"
+
+            if [[ "$FULL_RESTART" == "true" ]]; then
+              step_time "container restart start (full — infra/config changed)"
+              ./compose.sh restart
+              step_time "container restart done"
+            else
+              SERVICES=()
+              [[ "$BACKEND_CHANGED" == "true" ]] && SERVICES+=(backend)
+              [[ "$FRONTEND_CHANGED" == "true" ]] && SERVICES+=(frontend)
+
+              if [[ ${#SERVICES[@]} -eq 0 ]]; then
+                step_time "no deploy-relevant change — restart skipped"
+              else
+                step_time "container restart start (selective: ${SERVICES[*]})"
+                ./compose.sh restart "${SERVICES[@]}"
+                step_time "container restart done"
+              fi
+            fi
+          fi
 
           {
             echo ""

@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from .cleanup import purge_expired_soft_deletes
 from .config import get_settings
 from .database import SessionLocal, init_schema
-from .routers import auth, projects, task_categories, todos, uploads, version, workspaces
+from .routers import auth, dashboard, projects, task_categories, todos, uploads, version, workspaces
 from .uploads import UPLOAD_ROOT, WORKSPACE_ICON_DIR
 
 
@@ -36,6 +36,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(version.router)
+app.include_router(dashboard.router)
 app.include_router(workspaces.router)
 app.include_router(task_categories.router)
 app.include_router(projects.router)

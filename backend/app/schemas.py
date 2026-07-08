@@ -110,6 +110,18 @@ class TodoOut(TodoBase):
     updated_at: datetime
 
 
+class ProjectTreeOut(ProjectOut):
+    todos: list[TodoOut] = []
+
+
+class TaskCategoryTreeOut(TaskCategoryOut):
+    projects: list[ProjectTreeOut] = []
+
+
+class WorkspaceTreeOut(WorkspaceOut):
+    task_categories: list[TaskCategoryTreeOut] = []
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str
