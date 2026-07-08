@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
@@ -212,6 +212,64 @@ function CategoryBlock({
   )
 }
 
+function WorkspaceMenu({ workspaceId, onEdit, onDelete }: { workspaceId: string; onEdit: () => void; onDelete: () => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  return (
+    <div className="relative shrink-0" ref={ref}>
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm px-2"
+        aria-label="워크스페이스 메뉴"
+        onClick={() => setOpen((v) => !v)}
+      >
+        ⋮
+      </button>
+      {open && (
+        <div className="card absolute right-0 top-full mt-1 z-10 p-1 flex flex-col min-w-[112px] shadow-lg">
+          <Link
+            to={`/workspace/${workspaceId}`}
+            className="btn btn-ghost btn-sm justify-start"
+            onClick={() => setOpen(false)}
+          >
+            전체보기
+          </Link>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm justify-start"
+            onClick={() => {
+              setOpen(false)
+              onEdit()
+            }}
+          >
+            수정
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm justify-start text-danger"
+            onClick={() => {
+              setOpen(false)
+              onDelete()
+            }}
+          >
+            삭제
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function WorkspaceSection({
   workspace,
   hideCompleted,
@@ -235,8 +293,8 @@ function WorkspaceSection({
   )
 
   return (
-    <div className="card p-5 flex flex-col gap-4 group">
-      <div className="flex items-center justify-between gap-3">
+    <div className="card p-5 flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-2">
         <button
           type="button"
           className="flex items-center gap-3 min-w-0 flex-1 text-left"
@@ -251,20 +309,10 @@ function WorkspaceSection({
             ▶
           </span>
           <WorkspaceIcon icon={workspace.icon} color={workspace.color} className="w-9 h-9 rounded-[10px] text-lg shrink-0" />
-          <span className="font-bold truncate">{workspace.name}</span>
+          <span className="font-bold truncate min-w-0">{workspace.name}</span>
           {todoCount > 0 && <span className="text-xs text-gray-400 shrink-0">할 일 {todoCount}개</span>}
         </button>
-        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Link to={`/workspace/${workspace.id}`} className="btn btn-ghost btn-sm">
-            전체보기
-          </Link>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onEdit}>
-            수정
-          </button>
-          <button type="button" className="btn btn-ghost btn-sm text-danger" onClick={onDelete}>
-            삭제
-          </button>
-        </div>
+        <WorkspaceMenu workspaceId={workspace.id} onEdit={onEdit} onDelete={onDelete} />
       </div>
 
       {expanded &&
