@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import clsx from 'clsx'
 
 import { Modal } from '../components/Modal'
 import { isImageIcon, WorkspaceIcon } from '../components/WorkspaceIcon'
@@ -8,13 +9,15 @@ import {
   useCreateWorkspace,
   useDeleteWorkspace,
   useUpdateWorkspace,
-  useWorkspaces,
 } from '../hooks/useWorkspaces'
 import { useUploadWorkspaceIcon } from '../hooks/useUploads'
+import { useDashboardTree } from '../hooks/useDashboard'
+import { useUpdateTodo } from '../hooks/useTodos'
 import { ApiError } from '../lib/api'
-import type { Workspace } from '../lib/types'
+import type { ProjectTree, TaskCategoryTree, Todo, Workspace, WorkspaceTree } from '../lib/types'
 
 const COLOR_OPTIONS = ['#3182f6', '#00c896', '#ff9500', '#f04452', '#8b95a1', '#7c5cff']
+const PRIORITY_LABEL: Record<number, string> = { 1: '낮음', 5: '보통', 9: '높음' }
 
 function WorkspaceForm({
   initial,
@@ -119,51 +122,219 @@ function WorkspaceForm({
   )
 }
 
+function TodoRow({ todo, projectId }: { todo: Todo; projectId: string }) {
+  const updateTodo = useUpdateTodo(projectId)
+
+  return (
+    <label className="flex items-center gap-2 py-1 cursor-pointer">
+      <input
+        type="checkbox"
+        className="w-3.5 h-3.5 shrink-0"
+        checked={todo.status === 'done'}
+        onChange={(e) => updateTodo.mutate({ id: todo.id, status: e.target.checked ? 'done' : 'todo' })}
+      />
+      <span
+        className={clsx(
+          'text-xs truncate flex-1 min-w-0',
+          todo.status === 'done' && 'line-through text-gray-400',
+        )}
+      >
+        {todo.title}
+      </span>
+      {todo.due_date && (
+        <span className="badge bg-gray-100 text-gray-600 shrink-0">
+          {new Date(todo.due_date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+        </span>
+      )}
+      {todo.priority > 0 && (
+        <span className="badge bg-primary-light text-primary shrink-0">
+          {PRIORITY_LABEL[todo.priority] ?? todo.priority}
+        </span>
+      )}
+    </label>
+  )
+}
+
+function ProjectBlock({
+  workspaceId,
+  project,
+  hideCompleted,
+}: {
+  workspaceId: string
+  project: ProjectTree
+  hideCompleted: boolean
+}) {
+  const todos = hideCompleted ? project.todos.filter((t) => t.status !== 'done') : project.todos
+
+  return (
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <Link
+        to={`/workspace/${workspaceId}/project/${project.id}`}
+        className="text-xs font-bold text-gray-700 hover:text-primary hover:underline w-fit"
+      >
+        {project.name}
+      </Link>
+      {todos.length === 0 ? (
+        <p className="text-xs text-gray-400 pl-0.5">할 일 없음</p>
+      ) : (
+        <div className="flex flex-col">
+          {todos.map((todo) => (
+            <TodoRow key={todo.id} todo={todo} projectId={project.id} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CategoryBlock({
+  workspaceId,
+  category,
+  hideCompleted,
+}: {
+  workspaceId: string
+  category: TaskCategoryTree
+  hideCompleted: boolean
+}) {
+  return (
+    <div className="flex flex-col gap-2 border-l-2 border-gray-100 pl-3 min-w-0">
+      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide">{category.name}</h4>
+      {category.projects.length === 0 ? (
+        <p className="text-xs text-gray-400">프로젝트 없음</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-2.5 border-l-2 border-gray-50 pl-2">
+          {category.projects.map((project) => (
+            <ProjectBlock key={project.id} workspaceId={workspaceId} project={project} hideCompleted={hideCompleted} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function WorkspaceSection({
+  workspace,
+  hideCompleted,
+  onEdit,
+  onDelete,
+}: {
+  workspace: WorkspaceTree
+  hideCompleted: boolean
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const [expanded, setExpanded] = useState(true)
+
+  const todoCount = useMemo(
+    () =>
+      workspace.task_categories.reduce(
+        (sum, cat) => sum + cat.projects.reduce((s, p) => s + p.todos.length, 0),
+        0,
+      ),
+    [workspace],
+  )
+
+  return (
+    <div className="card p-5 flex flex-col gap-4 group">
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          className="flex items-center gap-3 min-w-0 flex-1 text-left"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          <span
+            className={clsx(
+              'text-gray-400 text-[10px] shrink-0 transition-transform',
+              expanded && 'rotate-90',
+            )}
+          >
+            ▶
+          </span>
+          <WorkspaceIcon icon={workspace.icon} color={workspace.color} className="w-9 h-9 rounded-[10px] text-lg shrink-0" />
+          <span className="font-bold truncate">{workspace.name}</span>
+          {todoCount > 0 && <span className="text-xs text-gray-400 shrink-0">할 일 {todoCount}개</span>}
+        </button>
+        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Link to={`/workspace/${workspace.id}`} className="btn btn-ghost btn-sm">
+            전체보기
+          </Link>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onEdit}>
+            수정
+          </button>
+          <button type="button" className="btn btn-ghost btn-sm text-danger" onClick={onDelete}>
+            삭제
+          </button>
+        </div>
+      </div>
+
+      {expanded &&
+        (workspace.task_categories.length === 0 ? (
+          <p className="text-sm text-gray-400 pl-1">아직 업무 분류가 없습니다.</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {workspace.task_categories.map((category) => (
+              <CategoryBlock
+                key={category.id}
+                workspaceId={workspace.id}
+                category={category}
+                hideCompleted={hideCompleted}
+              />
+            ))}
+          </div>
+        ))}
+    </div>
+  )
+}
+
 export function DashboardPage() {
-  const { data: workspaces, isLoading } = useWorkspaces()
+  const { data: workspaces, isLoading } = useDashboardTree()
   const createWorkspace = useCreateWorkspace()
   const updateWorkspace = useUpdateWorkspace()
   const deleteWorkspace = useDeleteWorkspace()
 
   const [showCreate, setShowCreate] = useState(false)
   const [editing, setEditing] = useState<Workspace | null>(null)
+  const [hideCompleted, setHideCompleted] = useState(false)
 
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold">대시보드</h1>
-        <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
-          + 워크스페이스 추가
-        </button>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-sm text-gray-600 select-none">
+            <input
+              type="checkbox"
+              className="w-4 h-4"
+              checked={hideCompleted}
+              onChange={(e) => setHideCompleted(e.target.checked)}
+            />
+            완료 항목 숨기기
+          </label>
+          <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
+            + 워크스페이스 추가
+          </button>
+        </div>
       </div>
 
       {isLoading && <p className="text-gray-400">불러오는 중...</p>}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="flex flex-col gap-4">
         {workspaces?.map((ws) => (
-          <div key={ws.id} className="card p-5 flex flex-col gap-3 group relative">
-            <Link to={`/workspace/${ws.id}`} className="flex items-center gap-3">
-              <WorkspaceIcon icon={ws.icon} color={ws.color} className="w-10 h-10 rounded-[10px] text-xl" />
-              <div className="font-bold truncate">{ws.name}</div>
-            </Link>
-            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(ws)}>
-                수정
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm text-danger"
-                onClick={() => {
-                  if (confirm(`'${ws.name}' 워크스페이스를 삭제할까요? (30일 내 복구 가능)`)) {
-                    deleteWorkspace.mutate(ws.id)
-                  }
-                }}
-              >
-                삭제
-              </button>
-            </div>
-          </div>
+          <WorkspaceSection
+            key={ws.id}
+            workspace={ws}
+            hideCompleted={hideCompleted}
+            onEdit={() => setEditing(ws)}
+            onDelete={() => {
+              if (confirm(`'${ws.name}' 워크스페이스를 삭제할까요? (30일 내 복구 가능)`)) {
+                deleteWorkspace.mutate(ws.id)
+              }
+            }}
+          />
         ))}
+        {!isLoading && workspaces?.length === 0 && (
+          <p className="text-gray-400 text-sm">아직 워크스페이스가 없습니다. 위 버튼으로 추가해보세요.</p>
+        )}
       </div>
 
       {showCreate && (

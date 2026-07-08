@@ -23,7 +23,10 @@ export function useCreateWorkspace() {
   return useMutation({
     mutationFn: (payload: { name: string; icon?: string; color?: string }) =>
       api.post<Workspace>('/workspaces', payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workspaces'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
 }
 
@@ -32,7 +35,10 @@ export function useUpdateWorkspace() {
   return useMutation({
     mutationFn: ({ id, ...payload }: { id: string; name?: string; icon?: string; color?: string }) =>
       api.patch<Workspace>(`/workspaces/${id}`, payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workspaces'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
 }
 
@@ -40,6 +46,9 @@ export function useDeleteWorkspace() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.delete(`/workspaces/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workspaces'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workspaces'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
 }

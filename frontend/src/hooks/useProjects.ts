@@ -24,8 +24,10 @@ export function useCreateProject(categoryId: string | undefined) {
   return useMutation({
     mutationFn: (payload: { name: string; description?: string }) =>
       api.post<Project>(`/task-categories/${categoryId}/projects`, payload),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['task-categories', categoryId, 'projects'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-categories', categoryId, 'projects'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
 }
 
@@ -34,8 +36,10 @@ export function useUpdateProject(categoryId: string | undefined) {
   return useMutation({
     mutationFn: ({ id, ...payload }: { id: string; name?: string; description?: string; status?: string }) =>
       api.patch<Project>(`/projects/${id}`, payload),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['task-categories', categoryId, 'projects'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-categories', categoryId, 'projects'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
 }
 
@@ -43,7 +47,9 @@ export function useDeleteProject(categoryId: string | undefined) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.delete(`/projects/${id}`),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['task-categories', categoryId, 'projects'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-categories', categoryId, 'projects'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
 }

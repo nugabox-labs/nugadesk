@@ -44,6 +44,18 @@ export interface Todo {
   updated_at: string
 }
 
+export interface ProjectTree extends Project {
+  todos: Todo[]
+}
+
+export interface TaskCategoryTree extends TaskCategory {
+  projects: ProjectTree[]
+}
+
+export interface WorkspaceTree extends Workspace {
+  task_categories: TaskCategoryTree[]
+}
+
 export interface VersionInfo {
   version: string
   mode: 'dev' | 'prod'

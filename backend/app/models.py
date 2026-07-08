@@ -32,7 +32,7 @@ class Workspace(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     task_categories: Mapped[list["TaskCategory"]] = relationship(
-        back_populates="workspace", cascade="all, delete-orphan"
+        back_populates="workspace", cascade="all, delete-orphan", order_by="TaskCategory.sort_order"
     )
 
 
@@ -51,7 +51,7 @@ class TaskCategory(Base):
 
     workspace: Mapped["Workspace"] = relationship(back_populates="task_categories")
     projects: Mapped[list["Project"]] = relationship(
-        back_populates="task_category", cascade="all, delete-orphan"
+        back_populates="task_category", cascade="all, delete-orphan", order_by="Project.sort_order"
     )
 
 
@@ -71,7 +71,9 @@ class Project(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     task_category: Mapped["TaskCategory"] = relationship(back_populates="projects")
-    todos: Mapped[list["Todo"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    todos: Mapped[list["Todo"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan", order_by="Todo.sort_order"
+    )
 
 
 class Todo(Base):

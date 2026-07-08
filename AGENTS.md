@@ -13,8 +13,14 @@ Fixed hierarchy, don't restructure: **Workspace → Task Category (1:1 with an i
 list) → Project (internal only, no iCloud concept) → Todo (1:1 with an iCloud Reminders item)**.
 The iCloud mapping isn't implemented yet (see below) but the hierarchy is designed around it.
 
-Status: workspace/category/project/todo CRUD + kanban/list views done. Not started: workspace
-memo kanban, iCloud sync, cross-workspace dashboard aggregate view.
+Status: workspace/category/project/todo CRUD + kanban/list views done. Dashboard (`/`) is now a
+cross-workspace aggregate view — every workspace's full task-category > project > todo tree
+renders inline (2026-07-08 decision: user wants everything visible at a glance, not click-through
+per level), backed by a single `GET /api/dashboard` query (`backend/app/routers/dashboard.py`,
+`selectinload` all four levels in one round trip) rather than per-level requests. Any mutation
+hook touching workspaces/categories/projects/todos must also invalidate the `['dashboard']` query
+key or this view goes stale — see `frontend/src/hooks/use{Workspaces,TaskCategories,Projects,Todos}.ts`.
+Not started: workspace memo kanban, iCloud sync.
 
 ## Constraints
 
@@ -47,6 +53,15 @@ starting this.
   See `.github/workflows/deploy.yml` — it shells out to `./compose.sh restart`, not raw
   `docker compose`, because `compose.sh` injects `VERSION`/git-commit env vars the container
   can't see on its own (backend only mounts `backend/`, not the repo root).
+- Deploy is selective (2026-07-08 decision, was rebuilding+restarting every service on every
+  push regardless of what changed): the deploy job diffs `git diff --name-only` between the
+  previously-deployed commit and the new one and only rebuilds the affected side —
+  `frontend/**` → `./compose.sh restart frontend`, `backend/**` or `VERSION` →
+  `... restart backend`, both → both. Changes to `compose.yaml`/`compose.sh`/`compose.dev.yaml`/
+  `.env.example`/the deploy workflow itself fall back to a full `./compose.sh restart` (no args)
+  since those can affect the whole stack. `compose.sh restart` now takes an optional service-name
+  list forwarded to `docker compose up -d --build --force-recreate` — keep that plumbing if you
+  touch either file.
 - `compose.yaml` is the single source of truth for the deployed shape (used as-is for
   `compose.sh up`, i.e. prod). `compose.dev.yaml` (2026-07-07, reintroduced) is a *thin* overlay
   loaded only via `compose.sh --dev` — it only adds source bind-mounts + swaps the run command

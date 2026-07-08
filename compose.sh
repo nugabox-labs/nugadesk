@@ -13,7 +13,9 @@ usage() {
 
 명령어:
   up              기동 (기본값: 운영 모드, --dev 시 핫리로드 개발 모드)
-  restart         재기동 (기본값: 운영 모드, --dev 시 개발 모드)
+  restart [service...]  재기동 (기본값: 운영 모드, --dev 시 개발 모드)
+                  서비스 이름(frontend/backend/db)을 주면 해당 서비스만 빌드+재기동한다.
+                  생략하면 전체 서비스를 재기동한다.
   down            전체 중단 (모드 무관)
   logs [service] [-f]   로그 확인 (모드 무관)
   reset           볼륨 포함 초기화 (확인 프롬프트)
@@ -85,7 +87,7 @@ case "$CMD" in
     MODE="${MODE:-prod}"
     save_state "$MODE"
     compute_version_env
-    dc "$MODE" up -d --build --force-recreate
+    dc "$MODE" up -d --build --force-recreate "$@"
     ;;
   down)
     dc "$(load_state)" down
