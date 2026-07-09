@@ -36,6 +36,29 @@ class AppUser(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
+    icloud_connection: Mapped["IcloudConnection | None"] = relationship(
+        back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+
+
+class IcloudConnection(Base):
+    """Encrypted CalDAV credentials for the single app user (phase 1 of iCloud Reminders sync)."""
+
+    __tablename__ = "icloud_connections"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("app_users.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    apple_id_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    app_password_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    connected_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    last_sync_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    last_sync_error: Mapped[str | None] = mapped_column(Text)
+    reminder_list_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    user: Mapped["AppUser"] = relationship(back_populates="icloud_connection")
+
 
 class Category(Base):
     """Recursive 분류 node — mirrors Apple Reminders' List Group / List split:
@@ -79,7 +102,8 @@ class Todo(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
     due_date: Mapped[datetime | None] = mapped_column(nullable=True)
-    priority: Mapped[int] = mapped_column(SmallInteger, default=0)
+    priority: Mapped[int] = mapped_column(SmallInteger, default=0)  # 0=보통, 1=긴급
+    repeat_rule: Mapped[str | None] = mapped_column(String(20), nullable=True)  # daily|weekly|monthly|yearly
     status: Mapped[str] = mapped_column(String(20), default="todo")  # todo, in_progress, done
     completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
@@ -98,7 +122,7 @@ class NavPrimaryItem(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     label: Mapped[str] = mapped_column(String(50), nullable=False)
-    icon: Mapped[str] = mapped_column(String(50), nullable=False)
+    icon: Mapped[str | None] = mapped_column(String(255))
     route_path: Mapped[str] = mapped_column(String(100), nullable=False)
     # 콤마 구분 추가 경로 접두사 — 활성 섹션 판별용 (예: 작업 섹션의 `/category`)
     path_prefixes: Mapped[str | None] = mapped_column(String(255))
@@ -126,6 +150,7 @@ class NavSecondaryItem(Base):
     )
     item_type: Mapped[str] = mapped_column(String(20), nullable=False, default="link")
     label: Mapped[str] = mapped_column(String(50), nullable=False)
+    icon: Mapped[str | None] = mapped_column(String(255))
     route_path: Mapped[str | None] = mapped_column(String(100))
     page_title: Mapped[str | None] = mapped_column(String(100))
     page_description: Mapped[str | None] = mapped_column(Text)
@@ -134,6 +159,21 @@ class NavSecondaryItem(Base):
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
     primary: Mapped["NavPrimaryItem"] = relationship(back_populates="secondary_items")
+
+
+class Document(Base):
+    """정보 섹션의 노션 스타일 마크다운 문서. content는 BlockNote JSON 블록 배열."""
+
+    __tablename__ = "documents"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    content: Mapped[str | None] = mapped_column(Text)  # JSON-serialized BlockNote blocks
+    icon: Mapped[str | None] = mapped_column(String(255))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
 
 class BookmarkLink(Base):

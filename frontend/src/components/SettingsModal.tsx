@@ -3,6 +3,7 @@ import type { ChangeEvent, FormEvent } from 'react'
 import clsx from 'clsx'
 
 import { FaIcon } from './FaIcon'
+import { ICloudSyncSection } from './ICloudSyncSection'
 import { MenuManagementSection } from './MenuManagementSection'
 import { VersionBadge } from './VersionBadge'
 import { useChangePassword, useLogout, useUpdateAvatar } from '../hooks/useAuth'
@@ -13,10 +14,11 @@ import { MAX_COLUMNS, MIN_COLUMNS, useSettingsStore } from '../store/settings'
 import { useAuthStore } from '../store/auth'
 import { useThemeStore, type ThemeMode } from '../store/theme'
 
-export type SettingsSection = 'task' | 'user' | 'system' | 'menu'
+export type SettingsSection = 'task' | 'integrations' | 'user' | 'system' | 'menu'
 
 const SECTIONS: { id: SettingsSection; label: string; icon: string }[] = [
   { id: 'task', label: '작업', icon: 'folder-open' },
+  { id: 'integrations', label: '연동', icon: 'cloud' },
   { id: 'menu', label: '메뉴 관리', icon: 'bars' },
   { id: 'user', label: '사용자', icon: 'circle-user' },
   { id: 'system', label: '시스템 설정', icon: 'sliders' },
@@ -35,8 +37,8 @@ function TaskSection() {
 
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="font-bold text-lg">작업 현황 레이아웃 열 개수</h3>
-      <p className="text-sm text-gray-500">
+      <h3 className="font-bold text-base">작업 현황 레이아웃 열 개수</h3>
+      <p className="text-xs text-gray-500">
         대시보드와 작업 관리 페이지에서 작업 현황을 몇 열로 표시할지 정합니다. 모바일에서는 항상 1열로
         표시됩니다.
       </p>
@@ -47,7 +49,7 @@ function TaskSection() {
             type="button"
             onClick={() => setTaskColumns(n)}
             className={clsx(
-              'w-12 h-12 rounded-[10px] text-base font-bold border',
+              'w-10 h-10 rounded-[10px] text-sm font-bold border',
               taskColumns === n
                 ? 'bg-primary text-white border-primary'
                 : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100',
@@ -115,11 +117,11 @@ function UserSection() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-3">
-        <h3 className="font-bold text-lg">프로필 이미지</h3>
-        <div className="flex items-center gap-4">
-          <span className="w-16 h-16 shrink-0 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-2xl overflow-hidden">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <h3 className="font-bold text-base">프로필 이미지</h3>
+        <div className="flex items-center gap-3">
+          <span className="w-12 h-12 shrink-0 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-xl overflow-hidden">
             {avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -128,7 +130,7 @@ function UserSection() {
           </span>
           <button
             type="button"
-            className="btn btn-secondary"
+            className="btn btn-secondary btn-sm"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadAvatar.isPending}
           >
@@ -142,16 +144,16 @@ function UserSection() {
             onChange={handleAvatarChange}
           />
         </div>
-        {avatarError && <p className="text-sm text-danger">{avatarError}</p>}
+        {avatarError && <p className="text-xs text-danger">{avatarError}</p>}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h3 className="font-bold text-lg">아이디</h3>
-        <p className="text-base text-gray-700">{username}</p>
+      <div className="flex flex-col gap-1">
+        <h3 className="font-bold text-base">아이디</h3>
+        <p className="text-sm text-gray-700">{username}</p>
       </div>
 
-      <form onSubmit={submitPassword} className="flex flex-col gap-3">
-        <h3 className="font-bold text-lg">비밀번호 변경</h3>
+      <form onSubmit={submitPassword} className="flex flex-col gap-2">
+        <h3 className="font-bold text-base">비밀번호 변경</h3>
         <input
           type="password"
           className="input"
@@ -181,9 +183,9 @@ function UserSection() {
           minLength={4}
           required
         />
-        {passwordError && <p className="text-sm text-danger">{passwordError}</p>}
-        {passwordSuccess && <p className="text-sm text-success">비밀번호가 변경되었습니다.</p>}
-        <button type="submit" className="btn btn-primary self-start" disabled={changePassword.isPending}>
+        {passwordError && <p className="text-xs text-danger">{passwordError}</p>}
+        {passwordSuccess && <p className="text-xs text-success">비밀번호가 변경되었습니다.</p>}
+        <button type="submit" className="btn btn-primary btn-sm self-start" disabled={changePassword.isPending}>
           {changePassword.isPending ? '변경 중...' : '비밀번호 변경'}
         </button>
       </form>
@@ -197,9 +199,9 @@ function SystemSection() {
   const { data: version } = useVersion()
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h3 className="font-bold text-lg">테마</h3>
+        <h3 className="font-bold text-base">테마</h3>
         <div className="flex gap-2">
           {THEME_OPTIONS.map((opt) => (
             <button
@@ -207,7 +209,7 @@ function SystemSection() {
               type="button"
               onClick={() => setMode(opt.mode)}
               className={clsx(
-                'px-4 h-11 rounded-[10px] text-base font-semibold border',
+                'px-3 h-9 rounded-[10px] text-sm font-semibold border',
                 mode === opt.mode
                   ? 'bg-primary text-white border-primary'
                   : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100',
@@ -220,17 +222,17 @@ function SystemSection() {
       </div>
 
       <div className="flex flex-col gap-2">
-        <h3 className="font-bold text-lg">버전 정보</h3>
+        <h3 className="font-bold text-base">버전 정보</h3>
         {version ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             <VersionBadge />
-            <p className="text-base text-gray-700">
+            <p className="text-sm text-gray-700">
               버전 {version.version} ({version.mode === 'dev' ? 'Dev' : 'Prod'})
             </p>
-            <p className="text-sm text-gray-500">커밋 {version.gitCommit}</p>
+            <p className="text-xs text-gray-500">커밋 {version.gitCommit}</p>
           </div>
         ) : (
-          <p className="text-sm text-gray-400">불러오는 중...</p>
+          <p className="text-xs text-gray-400">불러오는 중...</p>
         )}
       </div>
     </div>
@@ -245,6 +247,8 @@ function SectionContent({ section }: { section: SettingsSection }) {
   switch (section) {
     case 'task':
       return <TaskSection />
+    case 'integrations':
+      return <ICloudSyncSection />
     case 'menu':
       return <MenuManagementSection />
     case 'user':
@@ -291,7 +295,7 @@ export function SettingsModal({
               <FaIcon name="chevron-left" />
             </button>
           ) : null}
-          <h2 className="flex-1 text-lg font-bold truncate">
+          <h2 className="flex-1 text-base font-bold truncate">
             {mobilePanel === 'menu' ? '설정' : sectionLabel(section)}
           </h2>
           <button
@@ -304,11 +308,11 @@ export function SettingsModal({
         </div>
 
         {/* 데스크탑 헤더 */}
-        <div className="hidden lg:flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
-          <h2 className="text-xl font-bold">설정</h2>
+        <div className="hidden lg:flex items-center justify-between px-5 py-3 border-b border-gray-200 shrink-0">
+          <h2 className="text-base font-bold">설정</h2>
           <button
             type="button"
-            className="text-base font-semibold text-gray-500 hover:text-gray-800"
+            className="text-sm font-semibold text-gray-500 hover:text-gray-800"
             onClick={onClose}
           >
             닫기
@@ -317,14 +321,14 @@ export function SettingsModal({
 
         <div className="flex flex-1 min-h-0">
           {/* 데스크탑 사이드 네비 */}
-          <nav className="hidden lg:flex w-52 shrink-0 border-r border-gray-200 p-3 flex-col gap-1">
+          <nav className="hidden lg:flex w-44 shrink-0 border-r border-gray-200 p-2.5 flex-col gap-0.5">
             {SECTIONS.map((s) => (
               <button
                 key={s.id}
                 type="button"
                 onClick={() => setSection(s.id)}
                 className={clsx(
-                  'flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-base font-semibold text-left',
+                  'flex items-center gap-2 px-2.5 py-2 rounded-[10px] text-sm font-semibold text-left',
                   section === s.id ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50',
                 )}
               >
@@ -337,7 +341,7 @@ export function SettingsModal({
 
             <button
               type="button"
-              className="mt-auto flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] text-base font-semibold text-left text-danger hover:bg-gray-50"
+              className="mt-auto flex items-center gap-2 px-2.5 py-2 rounded-[10px] text-sm font-semibold text-left text-danger hover:bg-gray-50"
               onClick={() => logout.mutate()}
             >
               <span className="w-4 h-4 shrink-0 flex items-center justify-center text-sm leading-none">
@@ -384,7 +388,7 @@ export function SettingsModal({
           {/* 모바일: 섹션 내용 */}
           <div
             className={clsx(
-              'flex-1 min-w-0 overflow-y-auto p-4 lg:p-6',
+              'flex-1 min-w-0 overflow-y-auto p-4 lg:p-5',
               mobilePanel === 'menu' && 'hidden lg:block',
             )}
           >

@@ -15,6 +15,8 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 # serialize schema creation across the multiple uvicorn worker processes
 # started in prod (each runs the FastAPI lifespan independently on boot).
 SCHEMA_INIT_LOCK_KEY = 727272001
+# Serialize iCloud CalDAV sync across workers (poll + auto-sync).
+ICLOUD_SYNC_LOCK_KEY = 727272002
 
 
 class Base(DeclarativeBase):
@@ -29,6 +31,10 @@ SCHEMA_PATCHES: list[str] = [
     "ALTER TABLE nav_secondary_items ADD COLUMN IF NOT EXISTS page_description TEXT",
     "ALTER TABLE nav_primary_items ADD COLUMN IF NOT EXISTS page_title VARCHAR(100)",
     "ALTER TABLE nav_primary_items ADD COLUMN IF NOT EXISTS page_description TEXT",
+    "ALTER TABLE nav_secondary_items ADD COLUMN IF NOT EXISTS icon VARCHAR(255)",
+    "ALTER TABLE nav_primary_items ALTER COLUMN icon TYPE VARCHAR(255)",
+    "ALTER TABLE nav_primary_items ALTER COLUMN icon DROP NOT NULL",
+    "ALTER TABLE todos ADD COLUMN IF NOT EXISTS repeat_rule VARCHAR(20)",
 ]
 
 
@@ -169,6 +175,12 @@ def _patch_nav_defaults(conn) -> None:
             "WHERE route_path = '/tasks' AND (path_prefixes IS NULL OR path_prefixes = '')"
         )
     )
+    conn.execute(
+        text(
+            "UPDATE nav_primary_items SET path_prefixes = '/info/documents' "
+            "WHERE route_path = '/info' AND (path_prefixes IS NULL OR path_prefixes = '')"
+        )
+    )
 
     home_id = conn.execute(
         text("SELECT id FROM nav_primary_items WHERE route_path = '/' LIMIT 1")
@@ -193,7 +205,7 @@ def _patch_nav_defaults(conn) -> None:
         ("/", "대시보드", None),
         ("/tasks", "작업 관리", "해야 할 일들을 분류하고 진행 상황을 추적하는 공간입니다."),
         ("/assets", "자산 관리", "자산과 재무 목표를 관리하는 공간입니다."),
-        ("/info", "정보 관리", "흩어진 개인 기록을 한 곳에 모아 두는 공간입니다."),
+        ("/info", "문서", "노션에서 옮겨 온 문서와 개인 기록을 관리하는 공간입니다."),
         ("/links", "링크 모음", "자주 쓰는 링크를 모아 두는 공간입니다."),
     ]
     for route_path, title, description in page_meta:
@@ -229,6 +241,15 @@ def _seed_app_user(conn) -> None:
     )
 
 
+def _migrate_todo_priority(conn) -> None:
+    """구 우선순위(0/1/5/9) → 0=보통, 1=긴급. priority>1인 행이 있을 때만 1회성으로 실행."""
+    has_legacy = conn.execute(text("SELECT 1 FROM todos WHERE priority > 1 LIMIT 1")).scalar()
+    if not has_legacy:
+        return
+    conn.execute(text("UPDATE todos SET priority = 1 WHERE priority >= 5"))
+    conn.execute(text("UPDATE todos SET priority = 0 WHERE priority IN (1, 5)"))
+
+
 def init_schema() -> None:
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         conn.execute(text("SELECT pg_advisory_lock(:key)"), {"key": SCHEMA_INIT_LOCK_KEY})
@@ -241,6 +262,7 @@ def init_schema() -> None:
             # data migration is all-or-nothing.
             with engine.begin() as txn_conn:
                 _migrate_legacy_hierarchy(txn_conn)
+                _migrate_todo_priority(txn_conn)
                 _seed_nav_menus(txn_conn)
                 _patch_nav_defaults(txn_conn)
                 _seed_app_user(txn_conn)

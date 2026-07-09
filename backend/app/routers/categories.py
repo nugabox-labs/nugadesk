@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..icloud.auto_sync import schedule_icloud_sync
 from ..models import Category
 from ..schemas import CategoryCreate, CategoryOut, CategoryUpdate
 from ..security import require_session
@@ -47,6 +48,8 @@ def create_category(payload: CategoryCreate, db: Session = Depends(get_db)):
     db.add(category)
     db.commit()
     db.refresh(category)
+    if _is_mapped(category):
+        schedule_icloud_sync(category.id)
     return category
 
 
@@ -66,6 +69,8 @@ def update_category(category_id: uuid.UUID, payload: CategoryUpdate, db: Session
         setattr(category, field, value)
     db.commit()
     db.refresh(category)
+    if _is_mapped(category):
+        schedule_icloud_sync(category.id)
     return category
 
 

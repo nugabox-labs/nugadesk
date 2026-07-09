@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from 'react'
 import clsx from 'clsx'
 
+import { CategoryIcon } from './CategoryIcon'
 import { FaIcon } from './FaIcon'
-import { FaIconPicker } from './FaIconPicker'
+import { PersonalIconField } from './PersonalIconField'
 import {
   useCreatePrimaryNav,
   useCreateSecondaryNav,
@@ -84,7 +85,7 @@ function PrimaryForm({
   const create = useCreatePrimaryNav()
   const update = useUpdatePrimaryNav()
   const [label, setLabel] = useState(initial?.label ?? '')
-  const [icon, setIcon] = useState(initial?.icon ?? 'circle')
+  const [icon, setIcon] = useState<string | null>(initial?.icon ?? null)
   const [routePath, setRoutePath] = useState(initial?.route_path ?? '/')
   const [pathPrefixes, setPathPrefixes] = useState(initial?.path_prefixes ?? '')
   const [error, setError] = useState<string | null>(null)
@@ -95,7 +96,7 @@ function PrimaryForm({
     try {
       const payload = {
         label,
-        icon,
+        icon: icon?.trim() || null,
         route_path: routePath,
         path_prefixes: pathPrefixes.trim() || null,
       }
@@ -131,10 +132,7 @@ function PrimaryForm({
           onChange={(e) => setPathPrefixes(e.target.value)}
         />
       </label>
-      <div className="flex flex-col gap-1 text-sm">
-        <span className="font-semibold text-gray-700">아이콘</span>
-        <FaIconPicker value={icon} onSelect={setIcon} />
-      </div>
+      <PersonalIconField value={icon} onChange={setIcon} optional />
       {error && <p className="text-sm text-danger">{error}</p>}
       <div className="flex gap-2">
         <button type="button" className="btn btn-primary btn-sm" disabled={pending} onClick={submit}>
@@ -164,6 +162,7 @@ function SecondaryForm({
   const create = useCreateSecondaryNav()
   const update = useUpdateSecondaryNav()
   const [label, setLabel] = useState(initial?.label ?? '')
+  const [icon, setIcon] = useState<string | null>(initial?.icon ?? null)
   const [pageTitle, setPageTitle] = useState(initial?.page_title ?? '')
   const [pageDescription, setPageDescription] = useState(initial?.page_description ?? '')
   const [itemType, setItemType] = useState<NavSecondaryItemType>(initial?.item_type ?? 'link')
@@ -182,6 +181,7 @@ function SecondaryForm({
       const payload = {
         item_type: itemType,
         label,
+        icon: icon?.trim() || null,
         route_path: itemType === 'link' ? routePath : null,
         page_title: itemType === 'link' ? pageTitle.trim() || null : null,
         page_description: itemType === 'link' ? pageDescription.trim() || null : null,
@@ -246,6 +246,9 @@ function SecondaryForm({
           </label>
         </>
       )}
+      {itemType !== 'categories' && (
+        <PersonalIconField value={icon} onChange={setIcon} optional />
+      )}
       {itemType === 'heading' && (
         <p className="text-xs text-gray-500">소제목은 클릭할 수 없는 텍스트로 2차 메뉴에 표시됩니다.</p>
       )}
@@ -285,83 +288,89 @@ export function MenuManagementSection() {
   const hasCategories = secondaryItems.some((item) => item.item_type === 'categories')
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h3 className="font-bold text-lg">1차 메뉴</h3>
-        <p className="text-sm text-gray-500 mt-1">왼쪽 아이콘 레일에 표시됩니다. 드래그하여 순서를 바꿀 수 있습니다.</p>
+    <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-x-5 md:items-start">
+      <div className="flex flex-col gap-3 min-w-0">
+        <div>
+          <h3 className="font-bold text-base">1차 메뉴</h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            왼쪽 아이콘 레일에 표시됩니다. 드래그하여 순서를 바꿀 수 있습니다.
+          </p>
+        </div>
+
+        <SortableList
+          items={navItems}
+          onReorder={(ids) => reorderPrimary.mutate(ids)}
+          renderItem={(item, dragHandle) =>
+            editingPrimaryId === item.id ? (
+              <PrimaryForm
+                initial={item}
+                onDone={() => setEditingPrimaryId(null)}
+                onCancel={() => setEditingPrimaryId(null)}
+              />
+            ) : (
+              <div
+                className={clsx(
+                  'flex items-center gap-2 px-2.5 py-1.5 rounded-[10px] border text-sm',
+                  selected?.id === item.id
+                    ? 'border-primary bg-primary-light/30'
+                    : 'border-gray-200 bg-white hover:bg-gray-50',
+                )}
+              >
+                {dragHandle}
+                <button
+                  type="button"
+                  className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                  onClick={() => setSelectedId(item.id)}
+                >
+                  {item.icon ? (
+                    <CategoryIcon icon={item.icon} className="w-4 h-4 text-sm shrink-0" />
+                  ) : null}
+                  <span className="font-semibold truncate">{item.label}</span>
+                  <span className="text-xs text-gray-400 truncate">{item.route_path}</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm px-2"
+                  onClick={() => setEditingPrimaryId(item.id)}
+                >
+                  <FaIcon name="pen" />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm px-2 text-danger"
+                  disabled={deletePrimary.isPending}
+                  onClick={() => {
+                    if (confirm(`"${item.label}" 1차 메뉴를 삭제할까요?`)) {
+                      deletePrimary.mutate(item.id)
+                      if (selectedId === item.id) setSelectedId(null)
+                    }
+                  }}
+                >
+                  <FaIcon name="trash" />
+                </button>
+              </div>
+            )
+          }
+        />
+
+        {editingPrimaryId === 'new' ? (
+          <PrimaryForm onDone={() => setEditingPrimaryId(null)} onCancel={() => setEditingPrimaryId(null)} />
+        ) : (
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm self-start"
+            onClick={() => setEditingPrimaryId('new')}
+          >
+            1차 메뉴 추가
+          </button>
+        )}
       </div>
 
-      <SortableList
-        items={navItems}
-        onReorder={(ids) => reorderPrimary.mutate(ids)}
-        renderItem={(item, dragHandle) =>
-          editingPrimaryId === item.id ? (
-            <PrimaryForm
-              initial={item}
-              onDone={() => setEditingPrimaryId(null)}
-              onCancel={() => setEditingPrimaryId(null)}
-            />
-          ) : (
-            <div
-              className={clsx(
-                'flex items-center gap-2 px-3 py-2 rounded-[10px] border',
-                selected?.id === item.id
-                  ? 'border-primary bg-primary-light/30'
-                  : 'border-gray-200 bg-white hover:bg-gray-50',
-              )}
-            >
-              {dragHandle}
-              <button
-                type="button"
-                className="flex items-center gap-2 flex-1 min-w-0 text-left"
-                onClick={() => setSelectedId(item.id)}
-              >
-                <FaIcon name={item.icon} />
-                <span className="font-semibold truncate">{item.label}</span>
-                <span className="text-xs text-gray-400 truncate">{item.route_path}</span>
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm px-2"
-                onClick={() => setEditingPrimaryId(item.id)}
-              >
-                <FaIcon name="pen" />
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm px-2 text-danger"
-                disabled={deletePrimary.isPending}
-                onClick={() => {
-                  if (confirm(`"${item.label}" 1차 메뉴를 삭제할까요?`)) {
-                    deletePrimary.mutate(item.id)
-                    if (selectedId === item.id) setSelectedId(null)
-                  }
-                }}
-              >
-                <FaIcon name="trash" />
-              </button>
-            </div>
-          )
-        }
-      />
-
-      {editingPrimaryId === 'new' ? (
-        <PrimaryForm onDone={() => setEditingPrimaryId(null)} onCancel={() => setEditingPrimaryId(null)} />
-      ) : (
-        <button
-          type="button"
-          className="btn btn-secondary self-start"
-          onClick={() => setEditingPrimaryId('new')}
-        >
-          1차 메뉴 추가
-        </button>
-      )}
-
       {selected && (
-        <div className="flex flex-col gap-3 pt-4 border-t border-gray-200">
+        <div className="flex flex-col gap-3 min-w-0 pt-4 border-t border-gray-200 md:pt-0 md:border-t-0 md:border-l md:pl-5">
           <div>
-            <h3 className="font-bold text-lg">2차 메뉴 — {selected.label}</h3>
-            <p className="text-sm text-gray-500 mt-1">
+            <h3 className="font-bold text-base">2차 메뉴 — {selected.label}</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
               선택한 1차 메뉴의 사이드바 패널 항목입니다. &quot;분류&quot;는 소제목, &quot;분류 목록&quot;은
               작업 분류를 자동 표시합니다.
             </p>
@@ -380,14 +389,19 @@ export function MenuManagementSection() {
                   onCancel={() => setEditingSecondaryId(null)}
                 />
               ) : (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-[10px] border border-gray-200 bg-white hover:bg-gray-50">
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-[10px] border border-gray-200 bg-white hover:bg-gray-50 text-sm">
                   {dragHandle}
-                  <div className="flex-1 min-w-0">
-                    <span className="font-semibold">{item.label}</span>
-                    <span className="ml-2 text-xs text-gray-400">{SECONDARY_TYPE_LABELS[item.item_type]}</span>
-                    {item.route_path && (
-                      <span className="ml-2 text-xs text-gray-400">{item.route_path}</span>
-                    )}
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
+                    {item.icon ? (
+                      <CategoryIcon icon={item.icon} className="w-4 h-4 text-sm shrink-0" />
+                    ) : null}
+                    <div className="min-w-0">
+                      <span className="font-semibold">{item.label}</span>
+                      <span className="ml-2 text-xs text-gray-400">{SECONDARY_TYPE_LABELS[item.item_type]}</span>
+                      {item.route_path && (
+                        <span className="ml-2 text-xs text-gray-400">{item.route_path}</span>
+                      )}
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -423,7 +437,7 @@ export function MenuManagementSection() {
           ) : (
             <button
               type="button"
-              className="btn btn-secondary self-start"
+              className="btn btn-secondary btn-sm self-start"
               onClick={() => setEditingSecondaryId('new')}
             >
               2차 메뉴 추가

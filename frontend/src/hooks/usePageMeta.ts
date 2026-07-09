@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 
 import { useDashboardTree } from './useDashboard'
+import { useDocument } from './useDocuments'
 import { useNav } from './useNav'
 import { findCategoryPath } from '../lib/categoryTree'
 import { findPageMetaByPath, getActivePrimary } from '../lib/nav'
@@ -13,9 +14,12 @@ export interface BreadcrumbItem {
 
 export function usePageMeta(overrides?: { title?: string; description?: string }) {
   const { pathname } = useLocation()
-  const { categoryId } = useParams<{ categoryId: string }>()
+  const { categoryId, documentId } = useParams<{ categoryId: string; documentId: string }>()
   const { data: navItems } = useNav()
   const { data: categories } = useDashboardTree()
+  const { data: document } = useDocument(
+    documentId && pathname.startsWith('/info/documents/') ? documentId : undefined,
+  )
 
   return useMemo(() => {
     const activePrimary = navItems ? getActivePrimary(pathname, navItems) : null
@@ -42,12 +46,21 @@ export function usePageMeta(overrides?: { title?: string; description?: string }
           to: isLast ? undefined : `/category/${node.id}`,
         })
       })
+    } else if (documentId && pathname.startsWith('/info/documents/')) {
+      const infoSecondary = activePrimary?.secondary_items.find(
+        (item) => item.item_type === 'link' && item.route_path === '/info',
+      )
+      if (infoSecondary) {
+        breadcrumbs.push({ label: infoSecondary.label, to: '/info' })
+      }
+      breadcrumbs.push({ label: overrides?.title ?? document?.title ?? '문서' })
     } else if (navMeta?.secondary && navMeta.secondary.route_path !== activePrimary?.route_path) {
       breadcrumbs.push({ label: navMeta.secondary.label })
     }
 
     const title =
       overrides?.title ??
+      document?.title ??
       categoryNode?.name ??
       navMeta?.title ??
       activePrimary?.page_title ??
@@ -58,5 +71,5 @@ export function usePageMeta(overrides?: { title?: string; description?: string }
       overrides?.description ?? (categoryNode ? undefined : navMeta?.description)
 
     return { title, description, breadcrumbs, activePrimary }
-  }, [pathname, categoryId, navItems, categories, overrides?.title, overrides?.description])
+  }, [pathname, categoryId, documentId, navItems, categories, document, overrides?.title, overrides?.description])
 }

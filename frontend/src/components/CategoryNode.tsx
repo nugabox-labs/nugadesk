@@ -5,20 +5,31 @@ import clsx from 'clsx'
 
 import { CategoryFormModal } from './CategoryFormModal'
 import { CategoryIcon } from './CategoryIcon'
+import { FaIcon } from './FaIcon'
 import { Modal } from './Modal'
 import { ProgressRing } from './ProgressRing'
 import { useDeleteCategory } from '../hooks/useCategories'
 import { useCreateTodo, useDeleteTodo, useUpdateTodo } from '../hooks/useTodos'
-import type { CategoryTree, Todo } from '../lib/types'
+import {
+  isUrgentPriority,
+  normalizePriority,
+  PRIORITY_OPTIONS,
+  REPEAT_OPTIONS,
+  repeatLabel,
+  type TodoPriority,
+} from '../lib/todoMeta'
+import type { CategoryTree, Todo, TodoRepeatRule } from '../lib/types'
 
-const PRIORITY_LABEL: Record<number, string> = { 1: '낮음', 5: '보통', 9: '높음' }
+type CategoryNodeMode = 'card' | 'detail'
 
 function TodoEditModal({ todo, onClose }: { todo: Todo; onClose: () => void }) {
   const updateTodo = useUpdateTodo()
+  const deleteTodo = useDeleteTodo()
   const [title, setTitle] = useState(todo.title)
   const [notes, setNotes] = useState(todo.notes ?? '')
   const [dueDate, setDueDate] = useState(todo.due_date?.slice(0, 10) ?? '')
-  const [priority, setPriority] = useState(todo.priority)
+  const [priority, setPriority] = useState<TodoPriority>(normalizePriority(todo.priority))
+  const [repeatRule, setRepeatRule] = useState<TodoRepeatRule | ''>(todo.repeat_rule ?? '')
 
   function submit(e: FormEvent) {
     e.preventDefault()
@@ -30,9 +41,15 @@ function TodoEditModal({ todo, onClose }: { todo: Todo; onClose: () => void }) {
         notes: notes.trim() || undefined,
         due_date: dueDate ? new Date(dueDate).toISOString() : null,
         priority,
+        repeat_rule: repeatRule || null,
       },
       { onSuccess: onClose },
     )
+  }
+
+  function handleDelete() {
+    if (!confirm('이 할 일을 삭제할까요?')) return
+    deleteTodo.mutate(todo.id, { onSuccess: onClose })
   }
 
   return (
@@ -62,21 +79,38 @@ function TodoEditModal({ todo, onClose }: { todo: Todo; onClose: () => void }) {
           <select
             className="input"
             value={priority}
-            onChange={(e) => setPriority(Number(e.target.value))}
+            onChange={(e) => setPriority(Number(e.target.value) as TodoPriority)}
           >
-            <option value={0}>우선순위 없음</option>
-            <option value={1}>낮음</option>
-            <option value={5}>보통</option>
-            <option value={9}>높음</option>
+            {PRIORITY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <select
+            className="input"
+            value={repeatRule}
+            onChange={(e) => setRepeatRule(e.target.value as TodoRepeatRule | '')}
+          >
+            {REPEAT_OPTIONS.map((option) => (
+              <option key={option.value || 'none'} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
-        <div className="flex justify-end gap-2 mt-1">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>
-            취소
+        <div className="flex items-center justify-between gap-2 mt-1">
+          <button type="button" className="btn btn-ghost text-danger" onClick={handleDelete}>
+            삭제
           </button>
-          <button type="submit" className="btn btn-primary">
-            저장
-          </button>
+          <div className="flex gap-2">
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              취소
+            </button>
+            <button type="submit" className="btn btn-primary">
+              저장
+            </button>
+          </div>
         </div>
       </form>
     </Modal>
@@ -85,7 +119,6 @@ function TodoEditModal({ todo, onClose }: { todo: Todo; onClose: () => void }) {
 
 function TodoRow({ todo }: { todo: Todo }) {
   const updateTodo = useUpdateTodo()
-  const deleteTodo = useDeleteTodo()
   const [editing, setEditing] = useState(false)
 
   return (
@@ -111,27 +144,38 @@ function TodoRow({ todo }: { todo: Todo }) {
           {new Date(todo.due_date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
         </span>
       )}
-      {todo.priority > 0 && (
-        <span className="badge bg-primary-light text-primary shrink-0">
-          {PRIORITY_LABEL[todo.priority] ?? todo.priority}
+      {todo.repeat_rule && (
+        <span className="badge bg-gray-100 text-gray-500 shrink-0 inline-flex items-center gap-1">
+          <FaIcon name="repeat" className="text-[10px]" />
+          {repeatLabel(todo.repeat_rule)}
         </span>
       )}
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm px-1.5 shrink-0 text-danger"
-        onClick={() => confirm('이 할 일을 삭제할까요?') && deleteTodo.mutate(todo.id)}
-      >
-        ✕
-      </button>
+      {isUrgentPriority(todo.priority) && (
+        <span className="badge bg-danger/10 text-danger shrink-0">긴급</span>
+      )}
       {editing && <TodoEditModal todo={todo} onClose={() => setEditing(false)} />}
     </div>
   )
 }
 
-function AddTodoRow({ categoryId }: { categoryId: string }) {
-  const [open, setOpen] = useState(false)
+function AddTodoRow({
+  categoryId,
+  defaultOpen = false,
+  onClose,
+}: {
+  categoryId: string
+  defaultOpen?: boolean
+  onClose?: () => void
+}) {
+  const [open, setOpen] = useState(defaultOpen)
   const [title, setTitle] = useState('')
   const createTodo = useCreateTodo(categoryId)
+
+  function close() {
+    setOpen(false)
+    setTitle('')
+    onClose?.()
+  }
 
   if (!open) {
     return (
@@ -148,10 +192,7 @@ function AddTodoRow({ categoryId }: { categoryId: string }) {
   function submit(e: FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
-    createTodo.mutate(
-      { title: title.trim() },
-      { onSuccess: () => { setTitle(''); setOpen(false) } },
-    )
+    createTodo.mutate({ title: title.trim() }, { onSuccess: close })
   }
 
   return (
@@ -162,7 +203,7 @@ function AddTodoRow({ categoryId }: { categoryId: string }) {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="할 일 제목"
-        onBlur={() => !title && setOpen(false)}
+        onBlur={() => !title && close()}
       />
       <button type="submit" className="btn btn-primary btn-sm">
         추가
@@ -171,29 +212,26 @@ function AddTodoRow({ categoryId }: { categoryId: string }) {
   )
 }
 
-function AddChildCategoryRow({ parentId }: { parentId: string }) {
-  const [open, setOpen] = useState(false)
-
+function AddTodoIconButton({ onClick }: { onClick: () => void }) {
   return (
-    <>
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm justify-start text-gray-500"
-        onClick={() => setOpen(true)}
-      >
-        + 하위 분류
-      </button>
-      {open && <CategoryFormModal parentId={parentId} onClose={() => setOpen(false)} />}
-    </>
+    <button
+      type="button"
+      className="btn btn-ghost btn-sm px-2 shrink-0 text-gray-500 hover:text-gray-800"
+      aria-label="할 일 추가"
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+    >
+      <FaIcon name="circle-plus" />
+    </button>
   )
 }
 
 function CategoryMenu({
-  categoryId,
   onEdit,
   onDelete,
 }: {
-  categoryId: string
   onEdit: () => void
   onDelete: () => void
 }) {
@@ -217,17 +255,10 @@ function CategoryMenu({
         aria-label="분류 메뉴"
         onClick={() => setOpen((v) => !v)}
       >
-        ⋮
+        <FaIcon name="ellipsis-vertical" />
       </button>
       {open && (
         <div className="card absolute right-0 top-full mt-1 z-10 p-1 flex flex-col min-w-[112px] shadow-lg">
-          <Link
-            to={`/category/${categoryId}`}
-            className="btn btn-ghost btn-sm justify-start"
-            onClick={() => setOpen(false)}
-          >
-            자세히 보기
-          </Link>
           <button
             type="button"
             className="btn btn-ghost btn-sm justify-start"
@@ -254,14 +285,54 @@ function CategoryMenu({
   )
 }
 
-export function CategoryNode({ node, isTopLevel }: { node: CategoryTree; isTopLevel: boolean }) {
+function CategoryTitleContent({
+  node,
+  isTopLevel,
+  isMapped,
+  percent,
+}: {
+  node: CategoryTree
+  isTopLevel: boolean
+  isMapped: boolean
+  percent: number
+}) {
+  return (
+    <>
+      {isTopLevel && (
+        <CategoryIcon icon={node.icon} color={node.color} className="text-lg leading-none" />
+      )}
+      <span className={clsx('truncate min-w-0', isTopLevel ? 'font-bold' : 'text-sm font-semibold')}>
+        {node.name}
+      </span>
+      {isMapped && <span className="badge bg-primary-light text-primary shrink-0">iCloud</span>}
+      {node.todo_count > 0 && <ProgressRing percent={percent} />}
+    </>
+  )
+}
+
+export function CategoryNode({
+  node,
+  isTopLevel,
+  mode = 'card',
+}: {
+  node: CategoryTree
+  isTopLevel: boolean
+  mode?: CategoryNodeMode
+}) {
   const [expanded, setExpanded] = useState(true)
   const [editing, setEditing] = useState(false)
+  const [addingTodo, setAddingTodo] = useState(false)
   const deleteCategory = useDeleteCategory()
 
   const isMapped = !!(node.icloud_list_uid || node.icloud_list_name)
-  const canExpand = node.children.length > 0 || node.todos.length > 0
+  const canExpand = node.children.length > 0 || node.todos.length > 0 || addingTodo
   const percent = node.todo_count > 0 ? Math.round((node.done_count / node.todo_count) * 100) : 0
+  const isCard = mode === 'card'
+
+  function openAddTodo() {
+    setExpanded(true)
+    setAddingTodo(true)
+  }
 
   return (
     <div className={clsx('flex flex-col gap-2', !isTopLevel && 'border-l-2 border-gray-100 pl-3')}>
@@ -269,57 +340,82 @@ export function CategoryNode({ node, isTopLevel }: { node: CategoryTree; isTopLe
         className={clsx('flex items-center justify-between gap-2', isTopLevel && 'rounded-[10px] px-3 py-2')}
         style={isTopLevel ? { backgroundColor: `${node.color ?? '#3182f6'}1a` } : undefined}
       >
-        <button
-          type="button"
-          className="flex items-center gap-2 min-w-0 flex-1 text-left"
-          onClick={() => canExpand && setExpanded((v) => !v)}
-        >
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           {canExpand && (
-            <span
-              className={clsx(
-                'text-gray-400 text-[10px] shrink-0 transition-transform',
-                expanded && 'rotate-90',
-              )}
+            <button
+              type="button"
+              className="text-gray-400 shrink-0 transition-transform p-0.5"
+              aria-label={expanded ? '접기' : '펼치기'}
+              onClick={() => setExpanded((v) => !v)}
             >
-              ▶
-            </span>
+              <FaIcon
+                name="chevron-right"
+                className={clsx('text-xs transition-transform', expanded && 'rotate-90')}
+              />
+            </button>
           )}
-          {isTopLevel && (
-            <CategoryIcon icon={node.icon} color={node.color} className="w-4 h-4 rounded-[4px] text-xs shrink-0" />
+          {isCard ? (
+            <Link
+              to={`/category/${node.id}`}
+              className="flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-80"
+            >
+              <CategoryTitleContent
+                node={node}
+                isTopLevel={isTopLevel}
+                isMapped={isMapped}
+                percent={percent}
+              />
+            </Link>
+          ) : (
+            <button
+              type="button"
+              className="flex items-center gap-2 min-w-0 flex-1 text-left"
+              onClick={() => canExpand && setExpanded((v) => !v)}
+            >
+              <CategoryTitleContent
+                node={node}
+                isTopLevel={isTopLevel}
+                isMapped={isMapped}
+                percent={percent}
+              />
+            </button>
           )}
-          <span className={clsx('truncate min-w-0', isTopLevel ? 'font-bold' : 'text-sm font-semibold')}>
-            {node.name}
-          </span>
-          {isMapped && <span className="badge bg-primary-light text-primary shrink-0">iCloud</span>}
-          {node.todo_count > 0 && (
-            <span className="flex items-center gap-1 text-xs text-gray-400 shrink-0">
-              <ProgressRing percent={percent} />
-              {node.done_count}/{node.todo_count}
-            </span>
-          )}
-        </button>
-        <CategoryMenu
-          categoryId={node.id}
-          onEdit={() => setEditing(true)}
-          onDelete={() => {
-            if (confirm(`'${node.name}' 분류를 삭제할까요? (30일 내 복구 가능)`)) {
-              deleteCategory.mutate(node.id)
-            }
-          }}
-        />
+        </div>
+
+        {isCard ? (
+          <AddTodoIconButton onClick={openAddTodo} />
+        ) : (
+          <CategoryMenu
+            onEdit={() => setEditing(true)}
+            onDelete={() => {
+              if (confirm(`'${node.name}' 분류를 삭제할까요? (30일 내 복구 가능)`)) {
+                deleteCategory.mutate(node.id)
+              }
+            }}
+          />
+        )}
       </div>
 
       {expanded && (
         <div className="flex flex-col gap-2 pl-1">
           {node.children.map((child) => (
-            <CategoryNode key={child.id} node={child} isTopLevel={false} />
+            <CategoryNode key={child.id} node={child} isTopLevel={false} mode={mode} />
           ))}
           {node.todos.map((todo) => (
             <TodoRow key={todo.id} todo={todo} />
           ))}
-          <div className="flex items-center gap-2">
-            {!isMapped && <AddChildCategoryRow parentId={node.id} />}
-            <AddTodoRow categoryId={node.id} />
+          <div className="flex flex-col gap-2">
+            {isCard ? (
+              addingTodo && (
+                <AddTodoRow
+                  categoryId={node.id}
+                  defaultOpen
+                  onClose={() => setAddingTodo(false)}
+                />
+              )
+            ) : (
+              <AddTodoRow categoryId={node.id} />
+            )}
           </div>
         </div>
       )}

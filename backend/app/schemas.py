@@ -1,7 +1,10 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from .todo_repeat import REPEAT_RULES
 
 
 class CategoryBase(BaseModel):
@@ -38,9 +41,17 @@ class TodoBase(BaseModel):
     title: str
     notes: str | None = None
     due_date: datetime | None = None
-    priority: int = 0
+    priority: int = Field(default=0, ge=0, le=1)
+    repeat_rule: str | None = None
     status: str = "todo"
     sort_order: int = 0
+
+    @field_validator("repeat_rule")
+    @classmethod
+    def validate_repeat_rule(cls, value: str | None) -> str | None:
+        if value is not None and value not in REPEAT_RULES:
+            raise ValueError("repeat_rule must be one of: daily, weekly, monthly, yearly")
+        return value
 
 
 class TodoCreate(TodoBase):
@@ -51,9 +62,17 @@ class TodoUpdate(BaseModel):
     title: str | None = None
     notes: str | None = None
     due_date: datetime | None = None
-    priority: int | None = None
+    priority: int | None = Field(default=None, ge=0, le=1)
+    repeat_rule: str | None = None
     status: str | None = None
     sort_order: int | None = None
+
+    @field_validator("repeat_rule")
+    @classmethod
+    def validate_repeat_rule(cls, value: str | None) -> str | None:
+        if value is not None and value not in REPEAT_RULES:
+            raise ValueError("repeat_rule must be one of: daily, weekly, monthly, yearly")
+        return value
 
 
 class TodoOut(TodoBase):
@@ -108,6 +127,7 @@ NavSecondaryItemType = str  # link | heading | categories
 class NavSecondaryItemBase(BaseModel):
     item_type: NavSecondaryItemType = "link"
     label: str = Field(max_length=50)
+    icon: str | None = Field(default=None, max_length=255)
     route_path: str | None = Field(default=None, max_length=100)
     page_title: str | None = Field(default=None, max_length=100)
     page_description: str | None = None
@@ -121,6 +141,7 @@ class NavSecondaryItemCreate(NavSecondaryItemBase):
 class NavSecondaryItemUpdate(BaseModel):
     item_type: NavSecondaryItemType | None = None
     label: str | None = Field(default=None, max_length=50)
+    icon: str | None = Field(default=None, max_length=255)
     route_path: str | None = Field(default=None, max_length=100)
     page_title: str | None = Field(default=None, max_length=100)
     page_description: str | None = None
@@ -137,7 +158,7 @@ class NavSecondaryItemOut(NavSecondaryItemBase):
 
 class NavPrimaryItemBase(BaseModel):
     label: str = Field(max_length=50)
-    icon: str = Field(max_length=50)
+    icon: str | None = Field(default=None, max_length=255)
     route_path: str = Field(max_length=100)
     path_prefixes: str | None = Field(default=None, max_length=255)
     page_title: str | None = Field(default=None, max_length=100)
@@ -151,7 +172,7 @@ class NavPrimaryItemCreate(NavPrimaryItemBase):
 
 class NavPrimaryItemUpdate(BaseModel):
     label: str | None = Field(default=None, max_length=50)
-    icon: str | None = Field(default=None, max_length=50)
+    icon: str | None = Field(default=None, max_length=255)
     route_path: str | None = Field(default=None, max_length=100)
     path_prefixes: str | None = Field(default=None, max_length=255)
     page_title: str | None = Field(default=None, max_length=100)
@@ -169,6 +190,41 @@ class NavPrimaryItemOut(NavPrimaryItemBase):
 
 class NavReorderRequest(BaseModel):
     ids: list[uuid.UUID] = Field(min_length=1)
+
+
+class DocumentBase(BaseModel):
+    title: str = Field(max_length=255)
+    content: list[dict[str, Any]] | None = None
+    icon: str | None = Field(default=None, max_length=255)
+    sort_order: int = 0
+
+
+class DocumentCreate(DocumentBase):
+    pass
+
+
+class DocumentUpdate(BaseModel):
+    title: str | None = Field(default=None, max_length=255)
+    content: list[dict[str, Any]] | None = None
+    icon: str | None = Field(default=None, max_length=255)
+    sort_order: int | None = None
+
+
+class DocumentListOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    title: str
+    icon: str | None
+    sort_order: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class DocumentOut(DocumentBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
 
 
 class BookmarkLinkBase(BaseModel):
@@ -194,3 +250,46 @@ class BookmarkLinkOut(BookmarkLinkBase):
     id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+
+
+class IcloudConnectRequest(BaseModel):
+    apple_id_email: str = Field(min_length=3, max_length=255)
+    app_specific_password: str = Field(min_length=8, max_length=64)
+
+
+class IcloudReminderListOut(BaseModel):
+    uid: str
+    name: str
+
+
+class IcloudListsResponse(BaseModel):
+    lists: list[IcloudReminderListOut]
+
+
+class IcloudConnectResponse(BaseModel):
+    connected: bool
+    apple_id_email: str
+    connected_at: datetime
+    reminder_lists: list[IcloudReminderListOut]
+
+
+class IcloudStatusOut(BaseModel):
+    connected: bool
+    apple_id_email: str | None = None
+    connected_at: datetime | None = None
+    last_sync_at: datetime | None = None
+    last_sync_error: str | None = None
+    reminder_list_count: int | None = None
+    poll_enabled: bool = True
+    poll_interval_seconds: int = 300
+    auto_sync_debounce_seconds: int = 3
+
+
+class IcloudSyncResponse(BaseModel):
+    ok: bool
+    message: str
+    pulled: int = 0
+    pushed: int = 0
+    updated: int = 0
+    deleted: int = 0
+    skipped: int = 0

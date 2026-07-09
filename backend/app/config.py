@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     session_short_hours: int = 12
     session_remember_days: int = 180
 
+    icloud_poll_enabled: bool = True
+    icloud_poll_interval_seconds: int = 300
+    icloud_auto_sync_debounce_seconds: int = 3
+
     # Injected at container start by compose.sh, since the backend container
     # only mounts backend/ and cannot see the repo-root VERSION file or .git.
     version_override: str | None = None

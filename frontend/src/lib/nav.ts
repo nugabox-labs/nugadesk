@@ -52,6 +52,9 @@ export function getActivePrimary(pathname: string, items: NavPrimaryItem[]): Nav
 export function isSecondaryLinkActive(pathname: string, item: NavSecondaryItem): boolean {
   if (item.item_type !== 'link' || !item.route_path) return false
   if (item.route_path === '/') return pathname === '/'
+  if (item.route_path === '/info') {
+    return pathname === '/info' || pathname.startsWith('/info/documents')
+  }
   return pathname === item.route_path
 }
 

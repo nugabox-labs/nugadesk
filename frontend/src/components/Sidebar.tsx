@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { Link, useLocation } from 'react-router-dom'
 
+import { CategoryIcon } from './CategoryIcon'
 import { useDashboardTree } from '../hooks/useDashboard'
 import { useNav } from '../hooks/useNav'
 import { getActivePrimary, isCategorySecondaryActive, isSecondaryLinkActive } from '../lib/nav'
@@ -11,29 +12,43 @@ function SecondaryRow({
   label,
   active,
   onNavigate,
+  icon,
 }: {
   to: string
   label: string
   active: boolean
   onNavigate: () => void
+  icon?: string | null
 }) {
   return (
     <Link
       to={to}
       onClick={onNavigate}
       className={clsx(
-        'px-2.5 py-1.5 rounded-[8px] text-sm font-semibold truncate',
+        'flex items-center gap-2 px-2.5 py-1.5 rounded-[8px] text-sm font-semibold min-w-0',
         active ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50',
       )}
     >
-      {label}
+      {icon ? (
+        <CategoryIcon icon={icon} className="w-4 h-4 text-sm shrink-0 rounded-[4px]" />
+      ) : null}
+      <span className="truncate">{label}</span>
     </Link>
   )
 }
 
-function SecondaryHeading({ label }: { label: string }) {
+function SecondaryHeading({
+  label,
+  icon,
+}: {
+  label: string
+  icon?: string | null
+}) {
   return (
-    <div className="px-2.5 pt-4 pb-1 text-xs font-semibold text-gray-400 tracking-tight">{label}</div>
+    <div className="flex items-center gap-1.5 px-2.5 pt-4 pb-1 text-xs font-semibold text-gray-400 tracking-tight min-w-0">
+      {icon ? <CategoryIcon icon={icon} className="w-3.5 h-3.5 text-xs shrink-0" /> : null}
+      <span className="truncate">{label}</span>
+    </div>
   )
 }
 
@@ -44,7 +59,7 @@ function renderSecondaryItem(
   onNavigate: () => void,
 ): React.ReactNode | React.ReactNode[] {
   if (item.item_type === 'heading') {
-    return <SecondaryHeading key={item.id} label={item.label} />
+    return <SecondaryHeading key={item.id} label={item.label} icon={item.icon} />
   }
   if (item.item_type === 'categories') {
     return categories?.map((category) => (
@@ -52,6 +67,7 @@ function renderSecondaryItem(
         key={category.id}
         to={`/category/${category.id}`}
         label={category.name}
+        icon={category.icon}
         active={isCategorySecondaryActive(pathname, category.id)}
         onNavigate={onNavigate}
       />
@@ -63,6 +79,7 @@ function renderSecondaryItem(
         key={item.id}
         to={item.route_path}
         label={item.label}
+        icon={item.icon}
         active={isSecondaryLinkActive(pathname, item)}
         onNavigate={onNavigate}
       />

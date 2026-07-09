@@ -60,7 +60,8 @@ restarts; changing `.env` after the row already exists has no effect. Password h
 dependency added for a single-user app. Still exactly one user row in practice; this isn't
 multi-user support, just moving the one credential from a file into the DB so it's editable.
 
-Not started: workspace memo kanban, iCloud sync.
+Not started: workspace memo kanban. iCloud sync phase 3 done (2026-07-09): background poll +
+debounced auto-sync after local mutations.
 
 ## Constraints
 
@@ -125,12 +126,43 @@ Not started: workspace memo kanban, iCloud sync.
   runtime from `GET /api/version` and shown in `SettingsModal.tsx`'s 시스템 설정 section — never
   bake version/mode into the frontend build.
 
-## iCloud Reminders sync — not implemented (next major phase)
+## iCloud Reminders sync — phase 3 done (2026-07-09)
 
-No official REST API exists. Only path is CalDAV (RFC 4791) + iCalendar VTODO (RFC 5545) against
-`https://caldav.icloud.com`, auth via an App-Specific Password (not the normal Apple ID password).
-Conflict-resolution policy (iCloud-wins vs system-wins vs timestamp) is undecided — ask before
-starting this.
+No official REST API exists. Apple Reminders on the server side is only reachable through
+**CalDAV** (RFC 4791) + **VTODO** (RFC 5545) at `https://caldav.icloud.com`. There is no JSON,
+no developer console, and no webhook/push — changes must be polled.
+
+**Auth reality (2026-07-09 research):**
+- **"Apple login only" for arbitrary web apps is not available for Reminders.** Apple rolled out
+  Account Data Sharing OAuth (Oct 2025 support doc) for Mail/Calendar/Contacts in *partner/supported*
+  third-party apps (e.g. Outlook). Reminders are **not** in that set. Arbitrary developers cannot
+  register for that OAuth flow.
+- **CalDAV path (what we use):** Apple ID email + **app-specific password** (16 chars, generated at
+  account.apple.com, requires 2FA). Stored encrypted in `icloud_connections` (Fernet key derived
+  from `SECRET_KEY`). Settings → 연동 → iCloud 연결하기 walks the user through this.
+- **EventKit path (native only):** macOS/iOS apps can use EventKit for full modern Reminders
+  (subtasks, tags, etc.) with a system permission prompt — not usable from a NAS-hosted web app.
+
+**CalDAV limitations:**
+- Modern upgraded iCloud Reminders lists may expose placeholder VTODOs via CalDAV on some accounts;
+  filter these during sync. Subtasks, tags, smart lists, location reminders are CloudKit-only and
+  won't round-trip through CalDAV.
+- Conflict-resolution policy (2026-07-09 decision): **latest `updated_at` wins** per todo. Local
+  effective timestamp is `max(updated_at, deleted_at)`; remote uses `LAST-MODIFIED` (fallback
+  `DTSTAMP`). Implemented in `backend/app/icloud/sync.py`.
+
+**Implementation phases:**
+1. **Done (phase 1):** settings UI + CalDAV connect probe + encrypted credential storage.
+2. **Done (phase 2):** bidirectional VTODO sync (`sync.py`), `GET /api/icloud/lists`, category list
+   select in `CategoryFormModal`, `POST /api/icloud/sync`.
+3. **Done (phase 3):** `icloud/poller.py` background poll (`ICLOUD_POLL_*` env), `icloud/auto_sync.py`
+   debounced sync after todo/category mutations (`ICLOUD_AUTO_SYNC_DEBOUNCE_SECONDS`), Postgres
+   advisory lock `ICLOUD_SYNC_LOCK_KEY` so only one uvicorn worker syncs at a time. Dashboard
+   refetches every 30s while iCloud is connected so poll results appear without a manual refresh.
+4. **Future:** swap connect UI to Apple OAuth if Reminders join Account Data Sharing.
+
+**Libraries:** Python `caldav` + `cryptography` (Fernet) + `icalendar`. Do not add the Toss npm
+package; no client-side CalDAV (credentials must stay server-side).
 
 ## Infra
 

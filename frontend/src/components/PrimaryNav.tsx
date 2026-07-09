@@ -4,6 +4,7 @@ import type { MouseEvent, ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { FaIcon } from './FaIcon'
+import { CategoryIcon } from './CategoryIcon'
 import { SidebarToggleButton } from './SidebarToggleButton'
 import { SettingsModal, type SettingsSection } from './SettingsModal'
 import { useLayout } from '../context/LayoutContext'
@@ -163,7 +164,7 @@ export function PrimaryNav({ onNavigate }: { onNavigate: () => void }) {
                 key={item.id}
                 to={item.route_path}
                 active={isActive}
-                icon={<FaIcon name={item.icon} />}
+                icon={<CategoryIcon icon={item.icon} className="text-base" />}
                 label={item.label}
                 onClick={(e) => {
                   if (!handlePrimaryItemClick(isActive)) {
@@ -206,7 +207,7 @@ export function PrimaryNav({ onNavigate }: { onNavigate: () => void }) {
             to={item.route_path}
             onClick={onNavigate}
             active={activePrimary?.id === item.id}
-            icon={<FaIcon name={item.icon} />}
+            icon={<CategoryIcon icon={item.icon} className="text-base" />}
             label={item.label}
             compact
           />

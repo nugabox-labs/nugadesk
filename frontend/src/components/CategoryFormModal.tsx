@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 
 import { CategoryIcon, isFaIcon, isImageIcon, toFaIcon } from './CategoryIcon'
 import { FaIconPicker } from './FaIconPicker'
 import { Modal } from './Modal'
 import { useCreateCategory, useUpdateCategory } from '../hooks/useCategories'
+import { useIcloudLists, useIcloudStatus } from '../hooks/useIcloud'
 import { useUploadCategoryIcon } from '../hooks/useUploads'
 import { ApiError } from '../lib/api'
 import type { Category } from '../lib/types'
@@ -32,13 +33,34 @@ export function CategoryFormModal({
   const [name, setName] = useState(initial?.name ?? '')
   const [icon, setIcon] = useState(initial?.icon ?? '🗂️')
   const [color, setColor] = useState(initial?.color ?? COLOR_OPTIONS[0])
+  const [icloudListUid, setIcloudListUid] = useState(initial?.icloud_list_uid ?? '')
   const [icloudListName, setIcloudListName] = useState(initial?.icloud_list_name ?? '')
   const [uploadError, setUploadError] = useState<string | null>(null)
   const uploadIcon = useUploadCategoryIcon()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const { data: icloudStatus } = useIcloudStatus()
+  const { data: icloudLists, isLoading: icloudListsLoading } = useIcloudLists(!!icloudStatus?.connected)
+
+  useEffect(() => {
+    if (icloudListUid || !icloudListName || !icloudLists?.length) return
+    const match = icloudLists.find((list) => list.name === icloudListName)
+    if (match) setIcloudListUid(match.uid)
+  }, [icloudListName, icloudListUid, icloudLists])
+
   const iCloudDisabled = !!hasChildren && !initial?.icloud_list_name && !initial?.icloud_list_uid
   const submitting = createCategory.isPending || updateCategory.isPending
+
+  function handleIcloudListChange(uid: string) {
+    if (!uid) {
+      setIcloudListUid('')
+      setIcloudListName('')
+      return
+    }
+    const list = icloudLists?.find((item) => item.uid === uid)
+    setIcloudListUid(uid)
+    setIcloudListName(list?.name ?? '')
+  }
 
   async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -63,6 +85,7 @@ export function CategoryFormModal({
           id: initial.id,
           name: name.trim(),
           ...(isTopLevel ? { icon, color } : {}),
+          icloud_list_uid: icloudListUid || null,
           icloud_list_name: icloudListName.trim() || null,
         },
         { onSuccess: onClose },
@@ -73,6 +96,7 @@ export function CategoryFormModal({
           name: name.trim(),
           parent_id: parentId,
           ...(isTopLevel ? { icon, color } : {}),
+          icloud_list_uid: icloudListUid || undefined,
           icloud_list_name: icloudListName.trim() || undefined,
         },
         { onSuccess: onClose },
@@ -157,17 +181,34 @@ export function CategoryFormModal({
 
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-semibold text-gray-700">iCloud 미리알림 리스트 (선택)</label>
-          <input
-            className="input"
-            placeholder="연결할 iCloud 리스트 이름"
-            value={icloudListName}
-            onChange={(e) => setIcloudListName(e.target.value)}
-            disabled={iCloudDisabled}
-          />
+          {icloudStatus?.connected ? (
+            <select
+              className="input"
+              value={icloudListUid}
+              onChange={(e) => handleIcloudListChange(e.target.value)}
+              disabled={iCloudDisabled || icloudListsLoading}
+            >
+              <option value="">연결 안 함</option>
+              {icloudLists?.map((list) => (
+                <option key={list.uid} value={list.uid}>
+                  {list.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              className="input"
+              placeholder="설정 → 연동에서 iCloud를 먼저 연결해 주세요"
+              value={icloudListName}
+              disabled
+            />
+          )}
           <p className="text-sm text-gray-500">
             {iCloudDisabled
               ? '하위 분류가 있는 분류는 iCloud 리스트와 연결할 수 없습니다.'
-              : '이 분류가 해당 iCloud 미리알림 리스트와 동기화됩니다. 하위에 분류를 생성할 수 없습니다.'}
+              : icloudStatus?.connected
+                ? '동기화 시 이 리스트와 분류의 할일이 맞춰집니다. 하위에 분류를 생성할 수 없습니다.'
+                : 'iCloud 연결 후 실제 미리알림 리스트 목록에서 선택할 수 있습니다.'}
           </p>
         </div>
 

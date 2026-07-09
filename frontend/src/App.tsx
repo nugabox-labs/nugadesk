@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { Layout } from './components/Layout'
@@ -10,6 +11,10 @@ import { LoginPage } from './pages/LoginPage'
 import { LinksPage } from './pages/LinksPage'
 import { TaskManagementPage } from './pages/TaskManagementPage'
 
+const DocumentPage = lazy(() =>
+  import('./pages/DocumentPage').then((m) => ({ default: m.DocumentPage })),
+)
+
 function App() {
   return (
     <Routes>
@@ -21,6 +26,14 @@ function App() {
           <Route path="/tasks" element={<TaskManagementPage />} />
           <Route path="/assets" element={<AssetManagementPage />} />
           <Route path="/info" element={<InfoManagementPage />} />
+          <Route
+            path="/info/documents/:documentId"
+            element={
+              <Suspense fallback={<p className="p-8 text-gray-500">불러오는 중…</p>}>
+                <DocumentPage />
+              </Suspense>
+            }
+          />
           <Route path="/category/:categoryId" element={<CategoryDetailPage />} />
         </Route>
       </Route>

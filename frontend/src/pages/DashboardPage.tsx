@@ -17,12 +17,12 @@ function HubCard({ to, icon, title, caption }: (typeof HUB_LINKS)[number]) {
   return (
     <Link
       to={to}
-      className="dashboard-hub-card group flex items-center gap-3.5 p-4 sm:flex-col sm:items-start sm:gap-5 sm:p-8"
+      className="dashboard-hub-card group flex items-center gap-3.5 p-4 sm:flex-col sm:items-center sm:text-center sm:gap-5 sm:p-8"
     >
-      <span className="dashboard-hub-icon shrink-0 flex items-center justify-center w-12 h-12 sm:w-auto sm:h-auto sm:block rounded-[14px] bg-gray-50 group-hover:bg-primary-light transition-colors sm:bg-transparent sm:rounded-none">
+      <span className="dashboard-hub-icon shrink-0 flex items-center justify-center w-12 h-12 sm:w-auto sm:h-auto rounded-[14px] bg-gray-50 group-hover:bg-primary-light transition-colors sm:bg-transparent sm:rounded-none">
         <img src={icon} alt="" className="w-8 h-8 sm:w-20 sm:h-20" />
       </span>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 sm:flex-none sm:w-full">
         <span className="block font-bold text-base sm:text-lg text-gray-900">{title}</span>
         <span className="block text-sm text-gray-500 mt-0.5 truncate sm:whitespace-normal">{caption}</span>
       </div>

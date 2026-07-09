@@ -5,9 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..icloud.auto_sync import schedule_icloud_sync
 from ..models import Todo
 from ..schemas import TodoCreate, TodoOut, TodoUpdate
 from ..security import require_session
+from ..todo_repeat import advance_recurring_todo
 from .categories import _get_category_or_404
 
 router = APIRouter(tags=["todos"], dependencies=[Depends(require_session)])
@@ -30,6 +32,7 @@ def create_todo(category_id: uuid.UUID, payload: TodoCreate, db: Session = Depen
     db.add(todo)
     db.commit()
     db.refresh(todo)
+    schedule_icloud_sync(category_id)
     return todo
 
 
@@ -37,20 +40,34 @@ def create_todo(category_id: uuid.UUID, payload: TodoCreate, db: Session = Depen
 def update_todo(todo_id: uuid.UUID, payload: TodoUpdate, db: Session = Depends(get_db)):
     todo = _get_todo_or_404(db, todo_id)
     updates = payload.model_dump(exclude_unset=True)
-    if "status" in updates:
-        if updates["status"] == "done" and todo.status != "done":
-            todo.completed_at = datetime.now(timezone.utc)
-        elif updates["status"] != "done":
-            todo.completed_at = None
+    now = datetime.now(timezone.utc)
+
+    if updates.get("status") == "done" and todo.status != "done":
+        if todo.repeat_rule:
+            for field, value in updates.items():
+                if field != "status":
+                    setattr(todo, field, value)
+            advance_recurring_todo(todo, now=now)
+            db.commit()
+            db.refresh(todo)
+            schedule_icloud_sync(todo.category_id)
+            return todo
+        todo.completed_at = now
+    elif "status" in updates and updates["status"] != "done":
+        todo.completed_at = None
+
     for field, value in updates.items():
         setattr(todo, field, value)
     db.commit()
     db.refresh(todo)
+    schedule_icloud_sync(todo.category_id)
     return todo
 
 
 @router.delete("/api/todos/{todo_id}", status_code=204)
 def delete_todo(todo_id: uuid.UUID, db: Session = Depends(get_db)):
     todo = _get_todo_or_404(db, todo_id)
+    category_id = todo.category_id
     todo.deleted_at = datetime.now(timezone.utc)
     db.commit()
+    schedule_icloud_sync(category_id)

@@ -13,6 +13,8 @@ export interface Category {
 
 export type TodoStatus = 'todo' | 'in_progress' | 'done'
 
+export type TodoRepeatRule = 'daily' | 'weekly' | 'monthly' | 'yearly'
+
 export interface Todo {
   id: string
   category_id: string
@@ -20,6 +22,7 @@ export interface Todo {
   notes: string | null
   due_date: string | null
   priority: number
+  repeat_rule: TodoRepeatRule | null
   status: TodoStatus
   sort_order: number
   completed_at: string | null
@@ -47,6 +50,7 @@ export interface NavSecondaryItem {
   primary_id: string
   item_type: NavSecondaryItemType
   label: string
+  icon: string | null
   route_path: string | null
   page_title: string | null
   page_description: string | null
@@ -58,7 +62,7 @@ export interface NavSecondaryItem {
 export interface NavPrimaryItem {
   id: string
   label: string
-  icon: string
+  icon: string | null
   route_path: string
   path_prefixes: string | null
   page_title: string | null

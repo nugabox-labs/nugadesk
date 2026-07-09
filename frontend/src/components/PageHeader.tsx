@@ -169,12 +169,12 @@ export function StickyPageHeader() {
         <div className="hidden lg:block sticky top-0 z-10 h-0 overflow-visible">
           <div
             className={clsx(
-              'app-compact-header-bar app-sticky-header py-2.5',
+              'app-compact-header-bar',
               barVisible && 'is-visible',
               !barVisible && 'is-leaving',
             )}
           >
-            <div className="px-4 lg:px-8">
+            <div className="px-4 lg:px-8 py-2.5">
               <div className={PAGE_CONTAINER_CLASS}>
                 <h1 className="text-base font-bold text-gray-900 text-center truncate">{title}</h1>
               </div>

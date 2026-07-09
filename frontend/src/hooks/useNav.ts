@@ -22,7 +22,7 @@ export function useCreatePrimaryNav() {
   return useMutation({
     mutationFn: (payload: {
       label: string
-      icon: string
+      icon?: string | null
       route_path: string
       path_prefixes?: string | null
       sort_order?: number
@@ -40,7 +40,7 @@ export function useUpdatePrimaryNav() {
     }: {
       id: string
       label?: string
-      icon?: string
+      icon?: string | null
       route_path?: string
       path_prefixes?: string | null
       sort_order?: number
@@ -72,6 +72,7 @@ export function useCreateSecondaryNav() {
       primary_id: string
       item_type: NavSecondaryItemType
       label: string
+      icon?: string | null
       route_path?: string | null
       page_title?: string | null
       page_description?: string | null
@@ -91,6 +92,7 @@ export function useUpdateSecondaryNav() {
       id: string
       item_type?: NavSecondaryItemType
       label?: string
+      icon?: string | null
       route_path?: string | null
       page_title?: string | null
       page_description?: string | null
