@@ -72,6 +72,20 @@
     box-sizing: border-box;
   }
 
+  /* Tailwind preflight는 button에 cursor:default — .btn 없는 인터랙티브 버튼도 pointer */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"]:disabled {
+    cursor: not-allowed;
+  }
+  label:has(input[type="file"]),
+  label:has(input[type="color"]) {
+    cursor: pointer;
+  }
+
   /*
    * Dark theme: override the same CSS variables the light @theme block defines
    * (including Tailwind's own --color-white) so every existing bg-white /

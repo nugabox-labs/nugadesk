@@ -9,7 +9,7 @@ export function VersionBadge() {
 
   return (
     <span
-      className="badge"
+      className="badge w-fit self-start"
       style={{
         backgroundColor: isDev ? '#d32f2f' : '#111111',
         color: '#ffffff',

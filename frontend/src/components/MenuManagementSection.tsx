@@ -3,7 +3,7 @@ import clsx from 'clsx'
 
 import { CategoryIcon } from './CategoryIcon'
 import { FaIcon } from './FaIcon'
-import { PersonalIconField } from './PersonalIconField'
+import { PersonalIconField, IconPreviewSlot } from './PersonalIconField'
 import {
   useCreatePrimaryNav,
   useCreateSecondaryNav,
@@ -116,7 +116,10 @@ function PrimaryForm({
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-semibold text-gray-700">이름</span>
-          <input className="input h-9" value={label} onChange={(e) => setLabel(e.target.value)} />
+          <div className="flex items-center gap-2">
+            <IconPreviewSlot value={icon} onClear={() => setIcon(null)} />
+            <input className="input h-9 min-w-0 flex-1" value={label} onChange={(e) => setLabel(e.target.value)} />
+          </div>
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-semibold text-gray-700">경로</span>
@@ -217,7 +220,10 @@ function SecondaryForm({
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-semibold text-gray-700">이름</span>
-          <input className="input h-9" value={label} onChange={(e) => setLabel(e.target.value)} />
+          <div className="flex items-center gap-2">
+            <IconPreviewSlot value={icon} onClear={() => setIcon(null)} />
+            <input className="input h-9 min-w-0 flex-1" value={label} onChange={(e) => setLabel(e.target.value)} />
+          </div>
         </label>
       </div>
       {itemType === 'link' && (

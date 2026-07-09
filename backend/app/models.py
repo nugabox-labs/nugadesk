@@ -4,6 +4,7 @@ from datetime import datetime
 from sqlalchemy import (
     ForeignKey,
     Integer,
+    LargeBinary,
     SmallInteger,
     String,
     Text,
@@ -58,6 +59,17 @@ class IcloudConnection(Base):
     reminder_list_count: Mapped[int] = mapped_column(Integer, default=0)
 
     user: Mapped["AppUser"] = relationship(back_populates="icloud_connection")
+
+
+class UploadedFile(Base):
+    """업로드 이미지 바이너리 — 로컬/배포 환경이 달라도 원격 DB만 공유하면 동일하게 로드."""
+
+    __tablename__ = "uploaded_files"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    content_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
 class Category(Base):

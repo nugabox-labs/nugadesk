@@ -227,9 +227,9 @@ function SystemSection() {
           <div className="flex flex-col gap-1.5">
             <VersionBadge />
             <p className="text-sm text-gray-700">
-              버전 {version.version} ({version.mode === 'dev' ? 'Dev' : 'Prod'})
+              Mode : {version.mode === 'dev' ? 'Development' : 'Production'}
             </p>
-            <p className="text-xs text-gray-500">커밋 {version.gitCommit}</p>
+            <p className="text-sm text-gray-700">Commit ID : {version.gitCommit}</p>
           </div>
         ) : (
           <p className="text-xs text-gray-400">불러오는 중...</p>

@@ -216,14 +216,14 @@ function AddTodoIconButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
-      className="btn btn-ghost btn-sm px-2 shrink-0 text-gray-500 hover:text-gray-800"
+      className="text-gray-400 shrink-0 p-0.5 hover:text-gray-700"
       aria-label="할 일 추가"
       onClick={(e) => {
         e.stopPropagation()
         onClick()
       }}
     >
-      <FaIcon name="circle-plus" />
+      <FaIcon name="plus" className="text-xs" />
     </button>
   )
 }
@@ -299,7 +299,7 @@ function CategoryTitleContent({
   return (
     <>
       {isTopLevel && (
-        <CategoryIcon icon={node.icon} color={node.color} className="text-lg leading-none" />
+        <CategoryIcon icon={node.icon} className="text-lg leading-none text-gray-400" />
       )}
       <span className={clsx('truncate min-w-0', isTopLevel ? 'font-bold' : 'text-sm font-semibold')}>
         {node.name}
@@ -328,6 +328,7 @@ export function CategoryNode({
   const canExpand = node.children.length > 0 || node.todos.length > 0 || addingTodo
   const percent = node.todo_count > 0 ? Math.round((node.done_count / node.todo_count) * 100) : 0
   const isCard = mode === 'card'
+  const hideTopLevelChrome = isTopLevel && isCard
 
   function openAddTodo() {
     setExpanded(true)
@@ -337,11 +338,11 @@ export function CategoryNode({
   return (
     <div className={clsx('flex flex-col gap-2', !isTopLevel && 'border-l-2 border-gray-100 pl-3')}>
       <div
-        className={clsx('flex items-center justify-between gap-2', isTopLevel && 'rounded-[10px] px-3 py-2')}
-        style={isTopLevel ? { backgroundColor: `${node.color ?? '#3182f6'}1a` } : undefined}
+        className={clsx('flex items-center justify-between gap-2', isTopLevel && 'rounded-[10px] pl-3 py-2')}
+        style={isTopLevel && node.color ? { backgroundColor: `${node.color}1a` } : undefined}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          {canExpand && (
+          {canExpand && !hideTopLevelChrome && (
             <button
               type="button"
               className="text-gray-400 shrink-0 transition-transform p-0.5"
@@ -383,7 +384,7 @@ export function CategoryNode({
         </div>
 
         {isCard ? (
-          <AddTodoIconButton onClick={openAddTodo} />
+          !hideTopLevelChrome && <AddTodoIconButton onClick={openAddTodo} />
         ) : (
           <CategoryMenu
             onEdit={() => setEditing(true)}
