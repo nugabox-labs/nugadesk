@@ -39,3 +39,28 @@ export interface VersionInfo {
   mode: 'dev' | 'prod'
   gitCommit: string
 }
+
+export type NavSecondaryItemType = 'link' | 'heading' | 'categories'
+
+export interface NavSecondaryItem {
+  id: string
+  primary_id: string
+  item_type: NavSecondaryItemType
+  label: string
+  route_path: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface NavPrimaryItem {
+  id: string
+  label: string
+  icon: string
+  route_path: string
+  path_prefixes: string | null
+  sort_order: number
+  created_at: string
+  updated_at: string
+  secondary_items: NavSecondaryItem[]
+}

@@ -1,8 +1,10 @@
 import clsx from 'clsx'
 import { Link, useLocation, useMatch } from 'react-router-dom'
 
-import { getActiveSection } from './PrimaryNav'
 import { useDashboardTree } from '../hooks/useDashboard'
+import { useNav } from '../hooks/useNav'
+import { getActivePrimary } from '../lib/nav'
+import type { NavSecondaryItem } from '../lib/types'
 
 function SecondaryRow({
   to,
@@ -22,7 +24,7 @@ function SecondaryRow({
       to={to}
       onClick={onNavigate}
       className={clsx(
-        'px-2.5 py-2 rounded-[8px] text-base font-semibold truncate',
+        'px-2.5 py-1.5 rounded-[8px] text-sm font-semibold truncate',
         isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50',
       )}
     >
@@ -31,10 +33,52 @@ function SecondaryRow({
   )
 }
 
+function SecondaryHeading({ label }: { label: string }) {
+  return (
+    <div className="px-2.5 pt-4 pb-1 text-xs font-semibold text-gray-400 tracking-tight">{label}</div>
+  )
+}
+
+function renderSecondaryItem(
+  item: NavSecondaryItem,
+  categories: ReturnType<typeof useDashboardTree>['data'],
+  onNavigate: () => void,
+): React.ReactNode | React.ReactNode[] {
+  if (item.item_type === 'heading') {
+    return <SecondaryHeading key={item.id} label={item.label} />
+  }
+  if (item.item_type === 'categories') {
+    return categories?.map((category) => (
+      <SecondaryRow
+        key={category.id}
+        to={`/category/${category.id}`}
+        label={category.name}
+        onNavigate={onNavigate}
+      />
+    ))
+  }
+  if (item.item_type === 'link' && item.route_path) {
+    return (
+      <SecondaryRow
+        key={item.id}
+        to={item.route_path}
+        end={item.route_path === '/'}
+        label={item.label}
+        onNavigate={onNavigate}
+      />
+    )
+  }
+  return null
+}
+
 export function Sidebar({ onNavigate }: { onNavigate: () => void }) {
   const location = useLocation()
-  const section = getActiveSection(location.pathname)
+  const { data: navItems } = useNav()
   const { data: categories } = useDashboardTree()
+  const activePrimary = navItems ? getActivePrimary(location.pathname, navItems) : null
+  const secondaryItems = [...(activePrimary?.secondary_items ?? [])].sort(
+    (a, b) => a.sort_order - b.sort_order,
+  )
 
   return (
     <aside
@@ -49,24 +93,10 @@ export function Sidebar({ onNavigate }: { onNavigate: () => void }) {
       </div>
 
       <nav className="flex-1 min-h-0 overflow-y-auto px-2 flex flex-col gap-0.5">
-        {section === 'home' && <SecondaryRow to="/" end label="대시보드" onNavigate={onNavigate} />}
-
-        {section === 'tasks' && (
-          <>
-            <SecondaryRow to="/tasks" label="작업 관리" onNavigate={onNavigate} />
-            {categories?.map((category) => (
-              <SecondaryRow
-                key={category.id}
-                to={`/category/${category.id}`}
-                label={category.name}
-                onNavigate={onNavigate}
-              />
-            ))}
-          </>
-        )}
-
-        {section === 'assets' && <SecondaryRow to="/assets" label="자산 관리" onNavigate={onNavigate} />}
-        {section === 'info' && <SecondaryRow to="/info" label="정보 관리" onNavigate={onNavigate} />}
+        {secondaryItems.flatMap((item) => {
+          const rendered = renderSecondaryItem(item, categories, onNavigate)
+          return Array.isArray(rendered) ? rendered : rendered ? [rendered] : []
+        })}
       </nav>
     </aside>
   )

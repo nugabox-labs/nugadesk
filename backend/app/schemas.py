@@ -100,3 +100,64 @@ class VersionOut(BaseModel):
     version: str
     mode: str
     gitCommit: str
+
+
+NavSecondaryItemType = str  # link | heading | categories
+
+
+class NavSecondaryItemBase(BaseModel):
+    item_type: NavSecondaryItemType = "link"
+    label: str = Field(max_length=50)
+    route_path: str | None = Field(default=None, max_length=100)
+    sort_order: int = 0
+
+
+class NavSecondaryItemCreate(NavSecondaryItemBase):
+    primary_id: uuid.UUID
+
+
+class NavSecondaryItemUpdate(BaseModel):
+    item_type: NavSecondaryItemType | None = None
+    label: str | None = Field(default=None, max_length=50)
+    route_path: str | None = Field(default=None, max_length=100)
+    sort_order: int | None = None
+
+
+class NavSecondaryItemOut(NavSecondaryItemBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    primary_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class NavPrimaryItemBase(BaseModel):
+    label: str = Field(max_length=50)
+    icon: str = Field(max_length=50)
+    route_path: str = Field(max_length=100)
+    path_prefixes: str | None = Field(default=None, max_length=255)
+    sort_order: int = 0
+
+
+class NavPrimaryItemCreate(NavPrimaryItemBase):
+    pass
+
+
+class NavPrimaryItemUpdate(BaseModel):
+    label: str | None = Field(default=None, max_length=50)
+    icon: str | None = Field(default=None, max_length=50)
+    route_path: str | None = Field(default=None, max_length=100)
+    path_prefixes: str | None = Field(default=None, max_length=255)
+    sort_order: int | None = None
+
+
+class NavPrimaryItemOut(NavPrimaryItemBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+    secondary_items: list[NavSecondaryItemOut] = []
+
+
+class NavReorderRequest(BaseModel):
+    ids: list[uuid.UUID] = Field(min_length=1)

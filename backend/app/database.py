@@ -95,6 +95,60 @@ def _migrate_legacy_hierarchy(conn) -> None:
     )
 
 
+def _seed_nav_menus(conn) -> None:
+    """First-boot seed of default 1차/2차 메뉴 — matches the pre-DB hardcoded nav."""
+    has_nav = conn.execute(text("SELECT 1 FROM nav_primary_items LIMIT 1")).scalar()
+    if has_nav:
+        return
+
+    home_id = uuid.uuid4()
+    tasks_id = uuid.uuid4()
+    assets_id = uuid.uuid4()
+    info_id = uuid.uuid4()
+
+    conn.execute(
+        text(
+            "INSERT INTO nav_primary_items (id, label, icon, route_path, path_prefixes, sort_order) "
+            "VALUES "
+            "(:home_id, '홈', 'house', '/', NULL, 0), "
+            "(:tasks_id, '작업', 'folder-open', '/tasks', '/category', 1), "
+            "(:assets_id, '자산', 'sack-dollar', '/assets', NULL, 2), "
+            "(:info_id, '정보', 'book-open', '/info', NULL, 3)"
+        ),
+        {
+            "home_id": home_id,
+            "tasks_id": tasks_id,
+            "assets_id": assets_id,
+            "info_id": info_id,
+        },
+    )
+
+    conn.execute(
+        text(
+            "INSERT INTO nav_secondary_items (id, primary_id, item_type, label, route_path, sort_order) "
+            "VALUES "
+            "(:id1, :home_id, 'link', '대시보드', '/', 0), "
+            "(:id2, :tasks_id, 'link', '작업 관리', '/tasks', 0), "
+            "(:id3, :tasks_id, 'heading', '분류', NULL, 1), "
+            "(:id4, :tasks_id, 'categories', '분류 목록', NULL, 2), "
+            "(:id5, :assets_id, 'link', '자산 관리', '/assets', 0), "
+            "(:id6, :info_id, 'link', '정보 관리', '/info', 0)"
+        ),
+        {
+            "id1": uuid.uuid4(),
+            "id2": uuid.uuid4(),
+            "id3": uuid.uuid4(),
+            "id4": uuid.uuid4(),
+            "id5": uuid.uuid4(),
+            "id6": uuid.uuid4(),
+            "home_id": home_id,
+            "tasks_id": tasks_id,
+            "assets_id": assets_id,
+            "info_id": info_id,
+        },
+    )
+
+
 def _seed_app_user(conn) -> None:
     """First-boot seed of the single app_users row from .env AUTH_USERNAME/AUTH_PASSWORD.
     No-ops once any row exists — from then on the DB row (not .env) is the source of truth for
@@ -128,6 +182,7 @@ def init_schema() -> None:
             # data migration is all-or-nothing.
             with engine.begin() as txn_conn:
                 _migrate_legacy_hierarchy(txn_conn)
+                _seed_nav_menus(txn_conn)
                 _seed_app_user(txn_conn)
         finally:
             conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": SCHEMA_INIT_LOCK_KEY})

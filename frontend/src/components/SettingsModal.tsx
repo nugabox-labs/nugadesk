@@ -3,6 +3,7 @@ import type { ChangeEvent, FormEvent } from 'react'
 import clsx from 'clsx'
 
 import { FaIcon } from './FaIcon'
+import { MenuManagementSection } from './MenuManagementSection'
 import { VersionBadge } from './VersionBadge'
 import { useChangePassword, useLogout, useUpdateAvatar } from '../hooks/useAuth'
 import { useUploadAvatar } from '../hooks/useUploads'
@@ -12,10 +13,11 @@ import { MAX_COLUMNS, MIN_COLUMNS, useSettingsStore } from '../store/settings'
 import { useAuthStore } from '../store/auth'
 import { useThemeStore, type ThemeMode } from '../store/theme'
 
-export type SettingsSection = 'task' | 'user' | 'system'
+export type SettingsSection = 'task' | 'user' | 'system' | 'menu'
 
 const SECTIONS: { id: SettingsSection; label: string; icon: string }[] = [
   { id: 'task', label: '작업', icon: 'folder-open' },
+  { id: 'menu', label: '메뉴 관리', icon: 'bars' },
   { id: 'user', label: '사용자', icon: 'circle-user' },
   { id: 'system', label: '시스템 설정', icon: 'sliders' },
 ]
@@ -248,7 +250,7 @@ export function SettingsModal({
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="card w-full max-w-2xl h-[560px] max-h-[85vh] flex flex-col overflow-hidden shadow-xl"
+        className="card w-full max-w-6xl h-[min(760px,90vh)] flex flex-col overflow-hidden shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
@@ -263,7 +265,7 @@ export function SettingsModal({
         </div>
 
         <div className="flex flex-1 min-h-0">
-          <nav className="w-44 shrink-0 border-r border-gray-200 p-3 flex flex-col gap-1">
+          <nav className="w-52 shrink-0 border-r border-gray-200 p-3 flex flex-col gap-1">
             {SECTIONS.map((s) => (
               <button
                 key={s.id}
@@ -295,6 +297,7 @@ export function SettingsModal({
 
           <div className="flex-1 min-w-0 overflow-y-auto p-6">
             {section === 'task' && <TaskSection />}
+            {section === 'menu' && <MenuManagementSection />}
             {section === 'user' && <UserSection />}
             {section === 'system' && <SystemSection />}
           </div>

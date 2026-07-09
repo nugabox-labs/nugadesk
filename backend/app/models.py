@@ -89,3 +89,44 @@ class Todo(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     category: Mapped["Category"] = relationship(back_populates="todos")
+
+
+class NavPrimaryItem(Base):
+    """1차 메뉴 (PrimaryNav 상단 라우트 항목). 설정/프로필은 하드코딩 chrome이라 여기 없음."""
+
+    __tablename__ = "nav_primary_items"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    label: Mapped[str] = mapped_column(String(50), nullable=False)
+    icon: Mapped[str] = mapped_column(String(50), nullable=False)
+    route_path: Mapped[str] = mapped_column(String(100), nullable=False)
+    # 콤마 구분 추가 경로 접두사 — 활성 섹션 판별용 (예: 작업 섹션의 `/category`)
+    path_prefixes: Mapped[str | None] = mapped_column(String(255))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+    secondary_items: Mapped[list["NavSecondaryItem"]] = relationship(
+        back_populates="primary",
+        cascade="all, delete-orphan",
+        order_by="NavSecondaryItem.sort_order",
+    )
+
+
+class NavSecondaryItem(Base):
+    """2차 메뉴 (Sidebar 패널 항목). item_type: link | heading | categories."""
+
+    __tablename__ = "nav_secondary_items"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    primary_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("nav_primary_items.id", ondelete="CASCADE"), nullable=False
+    )
+    item_type: Mapped[str] = mapped_column(String(20), nullable=False, default="link")
+    label: Mapped[str] = mapped_column(String(50), nullable=False)
+    route_path: Mapped[str | None] = mapped_column(String(100))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+    primary: Mapped["NavPrimaryItem"] = relationship(back_populates="secondary_items")
