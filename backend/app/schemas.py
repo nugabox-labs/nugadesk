@@ -81,6 +81,21 @@ class LoginRequest(BaseModel):
     remember_me: bool = False
 
 
+class MeOut(BaseModel):
+    username: str
+    remember: bool
+    avatar_url: str | None = None
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=4, max_length=255)
+
+
+class AvatarUpdateRequest(BaseModel):
+    avatar_url: str = Field(max_length=255)
+
+
 class VersionOut(BaseModel):
     version: str
     mode: str

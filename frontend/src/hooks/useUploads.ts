@@ -15,3 +15,13 @@ export function useUploadCategoryIcon() {
     },
   })
 }
+
+export function useUploadAvatar() {
+  return useMutation({
+    mutationFn: (file: File) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      return api.upload<UploadResult>('/uploads/avatar', formData)
+    },
+  })
+}

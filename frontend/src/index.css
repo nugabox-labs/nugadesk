@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./toss-style.css";
 
 @theme {
   /* Toss-inspired design tokens */
@@ -36,6 +37,21 @@
   }
   html {
     color-scheme: light;
+    /* 2026-07-09: bumped from the 16px browser default — sidebar/header/content/modal text
+       all read too small at 1rem. Scales every rem-based Tailwind text/spacing utility together
+       instead of hand-tuning each component. */
+    font-size: 17.5px;
+    /* Two-rail nav colors (2026-07-09, from the Toss Business console reference screenshot) —
+       sourced from toss-style.css's --color-base-grey-opacity-* tokens where given literal
+       values, light-mode only (the source dump had no dark scheme). Dark mode falls back to
+       our own gray scale below since a light-formulated translucent overlay reads as invisible
+       on a dark surface. */
+    --color-primary-nav-bg: rgb(243, 244, 246);
+    --color-nav-hover-bg: var(--color-base-grey-opacity-100);
+    --color-nav-border: var(--color-base-grey-opacity-200);
+    /* 1차 rail hover/active icon+label color — literal black in light mode per spec, but that
+       reads as near-invisible on the dark rail background, so dark mode gets near-white instead. */
+    --color-nav-active-text: #000000;
   }
   html.dark {
     color-scheme: dark;
@@ -65,6 +81,10 @@
    * --color-gray-100 (hover/track), matching Toss's charcoal dark UI look.
    */
   html.dark {
+    --color-primary-nav-bg: var(--color-gray-100);
+    --color-nav-hover-bg: rgba(255, 255, 255, 0.08);
+    --color-nav-border: rgba(255, 255, 255, 0.1);
+    --color-nav-active-text: #ffffff;
     --color-white: #202632;
     --color-gray-50: #14171d;
     --color-gray-100: #1a1f28;
@@ -148,6 +168,11 @@
     border-radius: var(--radius-btn-lg);
   }
 
+  .card-flat {
+    background: var(--color-white);
+    border-radius: var(--radius-btn-xl);
+  }
+
   .input {
     width: 100%;
     height: 44px;
@@ -184,6 +209,17 @@
     cursor: pointer;
     transition: background-color 0.15s ease, border-color 0.15s ease;
   }
+  .task-grid {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  @media (min-width: 768px) {
+    .task-grid {
+      grid-template-columns: repeat(var(--task-cols, 2), minmax(0, 1fr));
+    }
+  }
+
   .checkbox-circle:checked {
     border-color: var(--color-primary);
     background-color: var(--color-primary);

@@ -99,7 +99,7 @@ function TodoRow({ todo }: { todo: Todo }) {
       <button
         type="button"
         className={clsx(
-          'text-xs text-left truncate flex-1 min-w-0',
+          'text-sm text-left truncate flex-1 min-w-0',
           todo.status === 'done' && 'line-through text-gray-400',
         )}
         onClick={() => setEditing(true)}
@@ -265,7 +265,10 @@ export function CategoryNode({ node, isTopLevel }: { node: CategoryTree; isTopLe
 
   return (
     <div className={clsx('flex flex-col gap-2', !isTopLevel && 'border-l-2 border-gray-100 pl-3')}>
-      <div className="flex items-center justify-between gap-2">
+      <div
+        className={clsx('flex items-center justify-between gap-2', isTopLevel && 'rounded-[10px] px-3 py-2')}
+        style={isTopLevel ? { backgroundColor: `${node.color ?? '#3182f6'}1a` } : undefined}
+      >
         <button
           type="button"
           className="flex items-center gap-2 min-w-0 flex-1 text-left"
@@ -282,7 +285,7 @@ export function CategoryNode({ node, isTopLevel }: { node: CategoryTree; isTopLe
             </span>
           )}
           {isTopLevel && (
-            <CategoryIcon icon={node.icon} color={node.color} className="w-9 h-9 rounded-[10px] text-lg shrink-0" />
+            <CategoryIcon icon={node.icon} color={node.color} className="w-4 h-4 rounded-[4px] text-xs shrink-0" />
           )}
           <span className={clsx('truncate min-w-0', isTopLevel ? 'font-bold' : 'text-sm font-semibold')}>
             {node.name}

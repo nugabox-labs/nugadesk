@@ -1,12 +1,54 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 
-import { CategoryIcon, isImageIcon } from './CategoryIcon'
+import { CategoryIcon, isFaIcon, isImageIcon, toFaIcon } from './CategoryIcon'
+import { FaIcon } from './FaIcon'
 import { Modal } from './Modal'
 import { useCreateCategory, useUpdateCategory } from '../hooks/useCategories'
 import { useUploadCategoryIcon } from '../hooks/useUploads'
 import { ApiError } from '../lib/api'
+import { FA_ICON_NAMES } from '../lib/fontawesomeIcons'
 import type { Category } from '../lib/types'
+
+const FA_SEARCH_RESULT_LIMIT = 24
+
+function FaIconPicker({ onSelect }: { onSelect: (name: string) => void }) {
+  const [query, setQuery] = useState('')
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return []
+    return FA_ICON_NAMES.filter((name) => name.includes(q)).slice(0, FA_SEARCH_RESULT_LIMIT)
+  }, [query])
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <input
+        className="input h-9"
+        placeholder="FontAwesome 아이콘 검색 (예: house, briefcase)"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      {results.length > 0 && (
+        <div className="grid grid-cols-6 gap-1.5 p-2 rounded-[10px] border border-gray-200 max-h-40 overflow-y-auto">
+          {results.map((name) => (
+            <button
+              key={name}
+              type="button"
+              title={name}
+              className="btn btn-ghost btn-sm aspect-square px-0"
+              onClick={() => {
+                onSelect(name)
+                setQuery('')
+              }}
+            >
+              <FaIcon name={name} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 const COLOR_OPTIONS = ['#3182f6', '#00c896', '#ff9500', '#f04452', '#8b95a1', '#7c5cff']
 
@@ -92,7 +134,7 @@ export function CategoryFormModal({
             <div className="flex flex-col gap-1.5">
               <input
                 className="input h-9 w-16 text-center text-lg"
-                value={isImageIcon(icon) ? '' : icon}
+                value={isImageIcon(icon) || isFaIcon(icon) ? '' : icon}
                 maxLength={2}
                 placeholder="🗂️"
                 onChange={(e) => setIcon(e.target.value)}
@@ -123,6 +165,8 @@ export function CategoryFormModal({
             />
           </div>
         )}
+
+        {isTopLevel && <FaIconPicker onSelect={(iconName) => setIcon(toFaIcon(iconName))} />}
 
         {!isTopLevel && (
           <input
@@ -161,7 +205,7 @@ export function CategoryFormModal({
             onChange={(e) => setIcloudListName(e.target.value)}
             disabled={iCloudDisabled}
           />
-          <p className="text-xs text-gray-500">
+          <p className="text-sm text-gray-500">
             {iCloudDisabled
               ? '하위 분류가 있는 분류는 iCloud 리스트와 연결할 수 없습니다.'
               : '이 분류가 해당 iCloud 미리알림 리스트와 동기화됩니다. 하위에 분류를 생성할 수 없습니다.'}

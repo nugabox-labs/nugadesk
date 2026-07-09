@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/auth'
 interface MeResponse {
   username: string
   remember: boolean
+  avatar_url: string | null
 }
 
 export function useMeQuery() {
@@ -17,7 +18,7 @@ export function useMeQuery() {
     queryFn: async () => {
       try {
         const me = await api.get<MeResponse>('/auth/me')
-        setUser(me.username)
+        setUser(me.username, me.avatar_url)
         return me
       } catch (err) {
         setUser(null)
@@ -56,5 +57,25 @@ export function useLogout() {
       setUser(null)
       queryClient.clear()
     },
+  })
+}
+
+export function useUpdateAvatar() {
+  const queryClient = useQueryClient()
+  const setAvatarUrl = useAuthStore((s) => s.setAvatarUrl)
+
+  return useMutation({
+    mutationFn: (avatar_url: string) => api.patch<MeResponse>('/auth/avatar', { avatar_url }),
+    onSuccess: (me) => {
+      setAvatarUrl(me.avatar_url)
+      queryClient.setQueryData(['auth', 'me'], me)
+    },
+  })
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (payload: { current_password: string; new_password: string }) =>
+      api.patch('/auth/password', payload),
   })
 }

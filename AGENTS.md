@@ -50,6 +50,16 @@ Alembic/rollback tooling in this project and it runs unattended against the only
 production data. Safe to drop them by hand later once the migrated data is confirmed correct in
 prod — not done automatically.
 
+**Auth model (2026-07-09 decision):** login now checks a real `app_users` DB row
+(`backend/app/models.py::AppUser`: username, `password_hash`, `avatar_url`), not `.env`
+`AUTH_USERNAME`/`AUTH_PASSWORD` directly — those two env vars are now only the **seed** used once
+by `database.py::_seed_app_user()` to create that row if the table is empty on boot. This exists so
+the in-app password-change (설정 → 사용자, `PATCH /api/auth/password`) actually persists across
+restarts; changing `.env` after the row already exists has no effect. Password hashing is stdlib
+`hashlib.pbkdf2_hmac` (`security.py::hash_password`/`verify_password`) — no passlib/bcrypt
+dependency added for a single-user app. Still exactly one user row in practice; this isn't
+multi-user support, just moving the one credential from a file into the DB so it's editable.
+
 Not started: workspace memo kanban, iCloud sync.
 
 ## Constraints
@@ -58,16 +68,62 @@ Not started: workspace memo kanban, iCloud sync.
   license only). Only its public design tokens may be reused (`#3182f6` primary, 8/10/14/16px
   radii, 32/38/48/56px button heights) inside our own Tailwind theme.
 - Font is Pretendard (Toss Product Sans is private).
-- Dark mode (2026-07-07 decision): system/light/dark toggle in `Header.tsx`, state in
-  `store/theme.ts`, persisted to `localStorage['nugadesk-theme']`. Implemented by overriding
-  Tailwind's own CSS variables (`--color-white`, `--color-gray-*`) under an `html.dark` selector
-  in `index.css` — existing `bg-white`/`text-gray-*`/`border-gray-*` utilities re-theme
-  automatically, no per-component `dark:` classes needed. Dark surfaces use Toss Gray `#202632`
-  (brand charcoal, not pure black). `index.html` has an inline pre-hydration script that reads the
-  same localStorage key to set the `dark` class before first paint (avoids a flash) — keep it in
-  sync with `store/theme.ts` if the storage key or fallback logic changes.
-- Header badge (`{version} Dev` red / `{version}` black) is fetched at runtime from
-  `GET /api/version` — never bake version/mode into the frontend build.
+- Icons (2026-07-09 decision): all UI chrome iconography (sidebar nav, buttons, profile card, etc.)
+  must use the local, self-hosted FontAwesome Pro 7 build under `frontend/public/fontawesome/`
+  (linked via a `<link>` tag in `index.html`, not the CDN) — render with `<i className="fa-solid
+  fa-{name}" />` (see `components/FaIcon.tsx`). No emoji and no other icon library (Heroicons,
+  lucide, etc.) for interface chrome. Only `fa-solid` and `fa-brands` woff2 weights are shipped
+  (the other 16 style/weight files from the source Pro kit were deliberately deleted to keep the
+  asset small — re-copy from the sibling `web-publish-honampck` project's
+  `src/assets/{css,fonts}/fontawesome*` if another weight is ever needed). The full available icon
+  name list (no `fa-` prefix) lives in `frontend/src/lib/fontawesomeIcons.ts`, generated once by
+  parsing that source CSS — regenerate the same way if the FontAwesome version is ever upgraded.
+  **Exception:** the 분류(Category) `icon` field is user-chosen personalization, not interface
+  chrome, and deliberately stays free-form — it still accepts emoji, an uploaded image, or a
+  FontAwesome icon (`CategoryFormModal.tsx`), don't force-migrate it to FA-only.
+- Dark mode (2026-07-07 decision, control relocated 2026-07-09): system/light/dark toggle lives in
+  `SettingsModal.tsx`'s 시스템 설정 section (not a header — there is no header, see the nav
+  architecture decision below), state in `store/theme.ts`, persisted to
+  `localStorage['nugadesk-theme']`. Implemented by overriding Tailwind's own CSS variables
+  (`--color-white`, `--color-gray-*`) under an `html.dark` selector in `index.css` — existing
+  `bg-white`/`text-gray-*`/`border-gray-*` utilities re-theme automatically, no per-component
+  `dark:` classes needed. Dark surfaces use Toss Gray `#202632` (brand charcoal, not pure black).
+  `index.html` has an inline pre-hydration script that reads the same localStorage key to set the
+  `dark` class before first paint (avoids a flash) — keep it in sync with `store/theme.ts` if the
+  storage key or fallback logic changes.
+- Two-rail nav, no header (2026-07-09, replaced an earlier single-sidebar-as-header layout the same
+  day): `Layout.tsx` composes two permanent, non-collapsible rails side by side — `PrimaryNav.tsx`
+  (1차 메뉴, narrow icon+label rail: 홈/작업/자산/정보 top, 설정/프로필 pinned bottom, active
+  section derived from the route via `getActiveSection()`) and `Sidebar.tsx` (2차 메뉴, wider panel
+  whose *content* switches based on which primary section is active — e.g. picking 작업 shows the
+  flat top-level 분류 list there). The 2차 panel is never collapsed/hidden on desktop — "홈" alone
+  still populates it (with a 대시보드 link), so it's never empty either. 설정/프로필 in
+  `PrimaryNav.tsx` open `SettingsModal` (프로필 deep-links to its 사용자 section via the
+  `initialSection` prop) rather than navigating — 설정 is not a routed page. On mobile, `PrimaryNav`
+  renders as a fixed bottom tab bar instead of a rail (same items, same component, pure CSS
+  breakpoint switch — no separate mobile component), and `Sidebar` becomes a `lg:hidden`
+  drawer toggled by a small floating hamburger button in `Layout.tsx` (not a full header bar).
+  Nav color rule (revised 2026-07-09 after the user supplied an actual Toss Business console
+  screenshot + its DevTools-computed CSS): the whole nav — both rails — uses gray/translucent
+  tokens only, never the blue primary color. `frontend/src/toss-style.css` holds a cleaned-up
+  `:root` block of just the reusable `--color-base-*`/`--color-semantic-*` layer, hand-trimmed
+  from a raw ~650-var DevTools dump (dropped `--desktop-color-component-*` internals and legacy
+  mobile-app `--t*` tokens — see the comment at the top of that file before re-extracting from a
+  future TDS dump). `index.css` imports it and layers three nav-specific tokens on top, each with
+  a light value taken from/matched to that file and a hand-picked dark-mode fallback (the source
+  dump had no dark scheme): `--color-primary-nav-bg` (1차 rail/tab-bar background,
+  `rgb(243,244,246)` in light), `--color-nav-hover-bg` (1차 rail hover **and** active background,
+  same treatment — no separate "active" style), `--color-nav-border` (2차 panel's right border),
+  `--color-nav-active-text` (1차 rail icon/label on hover/active — literal black `#000` in light
+  per spec, but that reads as invisible on the dark rail background, so dark mode overrides it to
+  near-white; don't hardcode `text-black` in `PrimaryNav.tsx`, use this token). 2차 panel
+  (`Sidebar.tsx`) is text-only — no icons at all, including on 분류 rows, even though
+  categories have their own configurable icon (`CategoryIcon`) elsewhere. 2차 panel's own
+  background matches the content page background (`bg-gray-50`), not white — the border is what
+  separates it from the page now, not a fill contrast.
+- Version info (`{version} Dev` red badge / `{version}` black, plus commit hash) is fetched at
+  runtime from `GET /api/version` and shown in `SettingsModal.tsx`'s 시스템 설정 section — never
+  bake version/mode into the frontend build.
 
 ## iCloud Reminders sync — not implemented (next major phase)
 

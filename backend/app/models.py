@@ -19,6 +19,24 @@ def uuid_pk():
     return mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
 
+class AppUser(Base):
+    """Single-row-in-practice user table (2026-07-09) — this app has no signup, but a real row
+    lets the profile card show an avatar and support in-app password changes instead of the
+    password living only in `.env`. Seeded once from `AUTH_USERNAME`/`AUTH_PASSWORD` on first boot
+    by `database.py::_seed_app_user()` if the table is empty; after that the DB row is the source
+    of truth for login, not `.env` (which just becomes the recovery seed for a fresh database).
+    """
+
+    __tablename__ = "app_users"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    username: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    avatar_url: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+
 class Category(Base):
     """Recursive 분류 node — mirrors Apple Reminders' List Group / List split:
     a category can nest child categories UNLESS it's mapped to an iCloud

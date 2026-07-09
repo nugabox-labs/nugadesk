@@ -1,7 +1,23 @@
 import clsx from 'clsx'
 
+import { FaIcon } from './FaIcon'
+
+const FA_ICON_PREFIX = 'fa:'
+
 export function isImageIcon(icon: string | null | undefined): boolean {
   return !!icon && (icon.startsWith('/api/') || icon.startsWith('http://') || icon.startsWith('https://'))
+}
+
+export function isFaIcon(icon: string | null | undefined): boolean {
+  return !!icon && icon.startsWith(FA_ICON_PREFIX)
+}
+
+export function faIconName(icon: string): string {
+  return icon.slice(FA_ICON_PREFIX.length)
+}
+
+export function toFaIcon(name: string): string {
+  return `${FA_ICON_PREFIX}${name}`
 }
 
 export function CategoryIcon({
@@ -14,6 +30,7 @@ export function CategoryIcon({
   className?: string
 }) {
   const isImage = isImageIcon(icon)
+  const isFa = isFaIcon(icon)
 
   return (
     <div
@@ -22,6 +39,8 @@ export function CategoryIcon({
     >
       {isImage ? (
         <img src={icon ?? undefined} alt="" className="w-full h-full object-cover" />
+      ) : isFa ? (
+        <FaIcon name={faIconName(icon as string)} style={{ color: color ?? '#3182f6' }} />
       ) : (
         <span>{icon}</span>
       )}

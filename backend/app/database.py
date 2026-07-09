@@ -1,7 +1,10 @@
+import uuid
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from .config import get_settings
+from .security import hash_password
 
 settings = get_settings()
 
@@ -92,6 +95,27 @@ def _migrate_legacy_hierarchy(conn) -> None:
     )
 
 
+def _seed_app_user(conn) -> None:
+    """First-boot seed of the single app_users row from .env AUTH_USERNAME/AUTH_PASSWORD.
+    No-ops once any row exists — from then on the DB row (not .env) is the source of truth for
+    login, so an in-app password change persists across restarts even though .env doesn't change.
+    """
+    has_user = conn.execute(text("SELECT 1 FROM app_users LIMIT 1")).scalar()
+    if has_user:
+        return
+    conn.execute(
+        text(
+            "INSERT INTO app_users (id, username, password_hash) "
+            "VALUES (:id, :username, :password_hash)"
+        ),
+        {
+            "id": uuid.uuid4(),
+            "username": settings.auth_username,
+            "password_hash": hash_password(settings.auth_password),
+        },
+    )
+
+
 def init_schema() -> None:
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         conn.execute(text("SELECT pg_advisory_lock(:key)"), {"key": SCHEMA_INIT_LOCK_KEY})
@@ -104,6 +128,7 @@ def init_schema() -> None:
             # data migration is all-or-nothing.
             with engine.begin() as txn_conn:
                 _migrate_legacy_hierarchy(txn_conn)
+                _seed_app_user(txn_conn)
         finally:
             conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": SCHEMA_INIT_LOCK_KEY})
 

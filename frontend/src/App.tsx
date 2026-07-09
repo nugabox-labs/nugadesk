@@ -2,9 +2,12 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { Layout } from './components/Layout'
 import { RequireAuth } from './components/RequireAuth'
+import { AssetManagementPage } from './pages/AssetManagementPage'
 import { CategoryDetailPage } from './pages/CategoryDetailPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { InfoManagementPage } from './pages/InfoManagementPage'
 import { LoginPage } from './pages/LoginPage'
+import { TaskManagementPage } from './pages/TaskManagementPage'
 
 function App() {
   return (
@@ -13,6 +16,9 @@ function App() {
       <Route element={<RequireAuth />}>
         <Route element={<Layout />}>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/tasks" element={<TaskManagementPage />} />
+          <Route path="/assets" element={<AssetManagementPage />} />
+          <Route path="/info" element={<InfoManagementPage />} />
           <Route path="/category/:categoryId" element={<CategoryDetailPage />} />
         </Route>
       </Route>

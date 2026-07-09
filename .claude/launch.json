@@ -7,6 +7,16 @@
       "runtimeArgs": ["run", "dev"],
       "cwd": "frontend",
       "port": 5173
+    },
+    {
+      "name": "compose-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "export APP_VERSION=$(tr -d '[:space:]' < VERSION); export APP_GIT_COMMIT=$(git rev-parse --short HEAD); exec docker compose -p nugadesk -f compose.yaml -f compose.dev.yaml --env-file .env up --build"
+      ],
+      "port": 7090,
+      "autoPort": false
     }
   ]
 }

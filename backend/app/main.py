@@ -8,7 +8,7 @@ from .cleanup import purge_expired_soft_deletes
 from .config import get_settings
 from .database import SessionLocal, init_schema
 from .routers import auth, categories, dashboard, todos, uploads, version
-from .uploads import UPLOAD_ROOT, WORKSPACE_ICON_DIR
+from .uploads import AVATAR_DIR, UPLOAD_ROOT, WORKSPACE_ICON_DIR
 
 
 @asynccontextmanager
@@ -42,6 +42,7 @@ app.include_router(todos.router)
 app.include_router(uploads.router)
 
 WORKSPACE_ICON_DIR.mkdir(parents=True, exist_ok=True)
+AVATAR_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_ROOT)), name="uploads")
 
 
