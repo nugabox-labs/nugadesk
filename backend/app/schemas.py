@@ -109,6 +109,8 @@ class NavSecondaryItemBase(BaseModel):
     item_type: NavSecondaryItemType = "link"
     label: str = Field(max_length=50)
     route_path: str | None = Field(default=None, max_length=100)
+    page_title: str | None = Field(default=None, max_length=100)
+    page_description: str | None = None
     sort_order: int = 0
 
 
@@ -120,6 +122,8 @@ class NavSecondaryItemUpdate(BaseModel):
     item_type: NavSecondaryItemType | None = None
     label: str | None = Field(default=None, max_length=50)
     route_path: str | None = Field(default=None, max_length=100)
+    page_title: str | None = Field(default=None, max_length=100)
+    page_description: str | None = None
     sort_order: int | None = None
 
 
@@ -136,6 +140,8 @@ class NavPrimaryItemBase(BaseModel):
     icon: str = Field(max_length=50)
     route_path: str = Field(max_length=100)
     path_prefixes: str | None = Field(default=None, max_length=255)
+    page_title: str | None = Field(default=None, max_length=100)
+    page_description: str | None = None
     sort_order: int = 0
 
 
@@ -148,6 +154,8 @@ class NavPrimaryItemUpdate(BaseModel):
     icon: str | None = Field(default=None, max_length=50)
     route_path: str | None = Field(default=None, max_length=100)
     path_prefixes: str | None = Field(default=None, max_length=255)
+    page_title: str | None = Field(default=None, max_length=100)
+    page_description: str | None = None
     sort_order: int | None = None
 
 
@@ -161,3 +169,28 @@ class NavPrimaryItemOut(NavPrimaryItemBase):
 
 class NavReorderRequest(BaseModel):
     ids: list[uuid.UUID] = Field(min_length=1)
+
+
+class BookmarkLinkBase(BaseModel):
+    title: str = Field(max_length=100)
+    url: str = Field(max_length=500)
+    note: str | None = Field(default=None, max_length=255)
+    sort_order: int = 0
+
+
+class BookmarkLinkCreate(BookmarkLinkBase):
+    pass
+
+
+class BookmarkLinkUpdate(BaseModel):
+    title: str | None = Field(default=None, max_length=100)
+    url: str | None = Field(default=None, max_length=500)
+    note: str | None = Field(default=None, max_length=255)
+    sort_order: int | None = None
+
+
+class BookmarkLinkOut(BookmarkLinkBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime

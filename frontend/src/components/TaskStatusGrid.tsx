@@ -12,9 +12,9 @@ export function TaskStatusGrid() {
   const [showCreate, setShowCreate] = useState(false)
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-lg font-bold">작업 현황</h2>
+    <div className="flex flex-col gap-3 sm:gap-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h2 className="text-base sm:text-lg font-bold">작업 현황</h2>
         <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>
           + 분류 추가
         </button>

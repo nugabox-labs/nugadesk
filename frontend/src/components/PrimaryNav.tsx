@@ -1,10 +1,12 @@
 import clsx from 'clsx'
 import { useState } from 'react'
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { FaIcon } from './FaIcon'
+import { SidebarToggleButton } from './SidebarToggleButton'
 import { SettingsModal, type SettingsSection } from './SettingsModal'
+import { useLayout } from '../context/LayoutContext'
 import { useNav } from '../hooks/useNav'
 import { getActivePrimary } from '../lib/nav'
 import { useAuthStore } from '../store/auth'
@@ -19,7 +21,7 @@ function NavButton({
   iconOnly,
 }: {
   to?: string
-  onClick?: () => void
+  onClick?: (e: MouseEvent) => void
   active: boolean
   icon: ReactNode
   label: string
@@ -27,7 +29,7 @@ function NavButton({
   iconOnly?: boolean
 }) {
   const className = clsx(
-    'flex flex-col items-center rounded-[10px]',
+    'flex flex-col items-center rounded-[10px] cursor-pointer',
     compact ? 'flex-1 justify-center gap-0.5 py-1' : 'w-full gap-0.5 py-1',
     active
       ? 'bg-[var(--color-nav-hover-bg)] text-[var(--color-nav-active-text)]'
@@ -75,12 +77,14 @@ function ChromeNavButton({
   label,
   compact,
   iconClassName,
+  showLabel,
 }: {
   onClick: () => void
   icon: ReactNode
   label: string
   compact?: boolean
   iconClassName?: string
+  showLabel?: boolean
 }) {
   return (
     <button
@@ -88,7 +92,7 @@ function ChromeNavButton({
       onClick={onClick}
       aria-label={label}
       className={clsx(
-        'group flex flex-col items-center rounded-[10px] text-gray-400',
+        'group flex flex-col items-center rounded-[10px] text-gray-400 cursor-pointer',
         compact ? 'flex-1 justify-center gap-0.5 py-1' : 'w-full gap-0.5 py-1',
       )}
     >
@@ -100,17 +104,28 @@ function ChromeNavButton({
       >
         {icon}
       </span>
+      {showLabel && compact && (
+        <span className="text-[10px] font-semibold group-hover:text-[var(--color-nav-active-text)]">
+          {label}
+        </span>
+      )}
     </button>
   )
 }
 
 function ProfileAvatar({ avatarUrl, size }: { avatarUrl: string | null; size: string }) {
-  if (!avatarUrl) {
+  const [failed, setFailed] = useState(false)
+  if (!avatarUrl || failed) {
     return <FaIcon name="circle-user" />
   }
   return (
-    <span className={clsx('nav-profile-avatar', size)}>
-      <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+    <span className={clsx('nav-profile-avatar rounded-full', size)}>
+      <img
+        src={avatarUrl}
+        alt=""
+        className="w-full h-full object-cover rounded-full"
+        onError={() => setFailed(true)}
+      />
     </span>
   )
 }
@@ -120,7 +135,18 @@ export function PrimaryNav({ onNavigate }: { onNavigate: () => void }) {
   const { data: navItems } = useNav()
   const activePrimary = navItems ? getActivePrimary(location.pathname, navItems) : null
   const avatarUrl = useAuthStore((s) => s.avatarUrl)
+  const { sidebarOpen, sidebarSlideOpen, toggleSidebar, openSidebarSlide, closeSidebarSlide } = useLayout()
   const [settingsSection, setSettingsSection] = useState<SettingsSection | null>(null)
+
+  function handlePrimaryItemClick(isActive: boolean): boolean {
+    if (sidebarOpen) return true
+    if (isActive && sidebarSlideOpen) {
+      closeSidebarSlide()
+      return false
+    }
+    openSidebarSlide()
+    return true
+  }
 
   return (
     <>
@@ -130,18 +156,31 @@ export function PrimaryNav({ onNavigate }: { onNavigate: () => void }) {
         style={{ backgroundColor: 'var(--color-primary-nav-bg)' }}
       >
         <div className="flex-1 flex flex-col items-center gap-0.5 w-full">
-          {navItems?.map((item) => (
-            <NavButton
-              key={item.id}
-              to={item.route_path}
-              active={activePrimary?.id === item.id}
-              icon={<FaIcon name={item.icon} />}
-              label={item.label}
-            />
-          ))}
+          {navItems?.map((item) => {
+            const isActive = activePrimary?.id === item.id
+            return (
+              <NavButton
+                key={item.id}
+                to={item.route_path}
+                active={isActive}
+                icon={<FaIcon name={item.icon} />}
+                label={item.label}
+                onClick={(e) => {
+                  if (!handlePrimaryItemClick(isActive)) {
+                    e.preventDefault()
+                  }
+                }}
+              />
+            )
+          })}
         </div>
 
         <div className="flex flex-col items-center gap-0.5 w-full">
+          <ChromeNavButton
+            onClick={toggleSidebar}
+            icon={<SidebarToggleButton open={sidebarOpen} />}
+            label={sidebarOpen ? '사이드바 닫기' : '사이드바 열기'}
+          />
           <ChromeNavButton
             onClick={() => setSettingsSection('task')}
             icon={<FaIcon name="gear" />}
@@ -174,16 +213,10 @@ export function PrimaryNav({ onNavigate }: { onNavigate: () => void }) {
         ))}
         <ChromeNavButton
           onClick={() => setSettingsSection('task')}
-          icon={<FaIcon name="gear" />}
+          icon={<ProfileAvatar avatarUrl={avatarUrl} size="w-7 h-7" />}
           label="설정"
           compact
-        />
-        <ChromeNavButton
-          onClick={() => setSettingsSection('user')}
-          icon={<ProfileAvatar avatarUrl={avatarUrl} size="w-7 h-7" />}
-          label="프로필"
-          compact
-          iconClassName="w-8 h-8 text-lg"
+          showLabel
         />
       </nav>
 

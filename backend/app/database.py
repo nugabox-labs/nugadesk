@@ -24,7 +24,12 @@ class Base(DeclarativeBase):
 # Small, idempotent column widenings for databases created before a model
 # change. We don't use Alembic at this stage, so these run on every boot
 # (guarded by IF EXISTS) instead of a proper migration.
-SCHEMA_PATCHES: list[str] = []
+SCHEMA_PATCHES: list[str] = [
+    "ALTER TABLE nav_secondary_items ADD COLUMN IF NOT EXISTS page_title VARCHAR(100)",
+    "ALTER TABLE nav_secondary_items ADD COLUMN IF NOT EXISTS page_description TEXT",
+    "ALTER TABLE nav_primary_items ADD COLUMN IF NOT EXISTS page_title VARCHAR(100)",
+    "ALTER TABLE nav_primary_items ADD COLUMN IF NOT EXISTS page_description TEXT",
+]
 
 
 def _migrate_legacy_hierarchy(conn) -> None:
@@ -125,14 +130,20 @@ def _seed_nav_menus(conn) -> None:
 
     conn.execute(
         text(
-            "INSERT INTO nav_secondary_items (id, primary_id, item_type, label, route_path, sort_order) "
+            "INSERT INTO nav_secondary_items "
+            "(id, primary_id, item_type, label, route_path, page_title, page_description, sort_order) "
             "VALUES "
-            "(:id1, :home_id, 'link', '대시보드', '/', 0), "
-            "(:id2, :tasks_id, 'link', '작업 관리', '/tasks', 0), "
-            "(:id3, :tasks_id, 'heading', '분류', NULL, 1), "
-            "(:id4, :tasks_id, 'categories', '분류 목록', NULL, 2), "
-            "(:id5, :assets_id, 'link', '자산 관리', '/assets', 0), "
-            "(:id6, :info_id, 'link', '정보 관리', '/info', 0)"
+            "(:id1, :home_id, 'link', '대시보드', '/', '대시보드', NULL, 0), "
+            "(:id7, :home_id, 'link', '링크 모음', '/links', '링크 모음', "
+            " '자주 쓰는 링크를 모아 두는 공간입니다.', 1), "
+            "(:id2, :tasks_id, 'link', '작업 관리', '/tasks', '작업 관리', "
+            " '해야 할 일들을 분류하고 진행 상황을 추적하는 공간입니다.', 0), "
+            "(:id3, :tasks_id, 'heading', '분류', NULL, NULL, NULL, 1), "
+            "(:id4, :tasks_id, 'categories', '분류 목록', NULL, NULL, NULL, 2), "
+            "(:id5, :assets_id, 'link', '자산 관리', '/assets', '자산 관리', "
+            " '자산과 재무 목표를 관리하는 공간입니다.', 0), "
+            "(:id6, :info_id, 'link', '정보 관리', '/info', '정보 관리', "
+            " '흩어진 개인 기록을 한 곳에 모아 두는 공간입니다.', 0)"
         ),
         {
             "id1": uuid.uuid4(),
@@ -141,12 +152,60 @@ def _seed_nav_menus(conn) -> None:
             "id4": uuid.uuid4(),
             "id5": uuid.uuid4(),
             "id6": uuid.uuid4(),
+            "id7": uuid.uuid4(),
             "home_id": home_id,
             "tasks_id": tasks_id,
             "assets_id": assets_id,
             "info_id": info_id,
         },
     )
+
+
+def _patch_nav_defaults(conn) -> None:
+    """기존 DB에 누락된 nav 메타·경로 접두사·링크 모음 2차 메뉴를 보강한다."""
+    conn.execute(
+        text(
+            "UPDATE nav_primary_items SET path_prefixes = '/category' "
+            "WHERE route_path = '/tasks' AND (path_prefixes IS NULL OR path_prefixes = '')"
+        )
+    )
+
+    home_id = conn.execute(
+        text("SELECT id FROM nav_primary_items WHERE route_path = '/' LIMIT 1")
+    ).scalar()
+    if home_id:
+        has_links = conn.execute(
+            text("SELECT 1 FROM nav_secondary_items WHERE route_path = '/links' LIMIT 1")
+        ).scalar()
+        if not has_links:
+            conn.execute(
+                text(
+                    "INSERT INTO nav_secondary_items "
+                    "(id, primary_id, item_type, label, route_path, page_title, page_description, sort_order) "
+                    "VALUES (:id, :home_id, 'link', '링크 모음', '/links', '링크 모음', "
+                    " '자주 쓰는 링크를 모아 두는 공간입니다.', "
+                    " COALESCE((SELECT MAX(sort_order) + 1 FROM nav_secondary_items WHERE primary_id = :home_id), 1))"
+                ),
+                {"id": uuid.uuid4(), "home_id": home_id},
+            )
+
+    page_meta = [
+        ("/", "대시보드", None),
+        ("/tasks", "작업 관리", "해야 할 일들을 분류하고 진행 상황을 추적하는 공간입니다."),
+        ("/assets", "자산 관리", "자산과 재무 목표를 관리하는 공간입니다."),
+        ("/info", "정보 관리", "흩어진 개인 기록을 한 곳에 모아 두는 공간입니다."),
+        ("/links", "링크 모음", "자주 쓰는 링크를 모아 두는 공간입니다."),
+    ]
+    for route_path, title, description in page_meta:
+        conn.execute(
+            text(
+                "UPDATE nav_secondary_items SET "
+                "page_title = COALESCE(page_title, :title), "
+                "page_description = COALESCE(page_description, :description) "
+                "WHERE route_path = :route_path AND item_type = 'link'"
+            ),
+            {"route_path": route_path, "title": title, "description": description},
+        )
 
 
 def _seed_app_user(conn) -> None:
@@ -183,6 +242,7 @@ def init_schema() -> None:
             with engine.begin() as txn_conn:
                 _migrate_legacy_hierarchy(txn_conn)
                 _seed_nav_menus(txn_conn)
+                _patch_nav_defaults(txn_conn)
                 _seed_app_user(txn_conn)
         finally:
             conn.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": SCHEMA_INIT_LOCK_KEY})

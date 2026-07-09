@@ -237,6 +237,23 @@ function SystemSection() {
   )
 }
 
+function sectionLabel(id: SettingsSection) {
+  return SECTIONS.find((s) => s.id === id)?.label ?? '설정'
+}
+
+function SectionContent({ section }: { section: SettingsSection }) {
+  switch (section) {
+    case 'task':
+      return <TaskSection />
+    case 'menu':
+      return <MenuManagementSection />
+    case 'user':
+      return <UserSection />
+    case 'system':
+      return <SystemSection />
+  }
+}
+
 export function SettingsModal({
   onClose,
   initialSection = 'task',
@@ -245,15 +262,49 @@ export function SettingsModal({
   initialSection?: SettingsSection
 }) {
   const [section, setSection] = useState<SettingsSection>(initialSection)
+  const [mobilePanel, setMobilePanel] = useState<'menu' | 'content'>('menu')
   const logout = useLogout()
 
+  function openSection(id: SettingsSection) {
+    setSection(id)
+    setMobilePanel('content')
+  }
+
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-40 flex bg-black/40 lg:items-center lg:justify-center lg:p-4"
+      onClick={onClose}
+    >
       <div
-        className="card w-full max-w-6xl h-[min(760px,90vh)] flex flex-col overflow-hidden shadow-xl"
+        className="card w-full h-full lg:h-[min(760px,90vh)] lg:max-w-6xl flex flex-col overflow-hidden shadow-xl lg:rounded-[14px] rounded-none"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
+        {/* 모바일 헤더 */}
+        <div className="lg:hidden flex items-center gap-2 px-4 py-3 border-b border-gray-200 shrink-0">
+          {mobilePanel === 'content' ? (
+            <button
+              type="button"
+              className="w-9 h-9 -ml-1 rounded-[10px] flex items-center justify-center text-gray-600 hover:bg-gray-100"
+              onClick={() => setMobilePanel('menu')}
+              aria-label="설정 메뉴로"
+            >
+              <FaIcon name="chevron-left" />
+            </button>
+          ) : null}
+          <h2 className="flex-1 text-lg font-bold truncate">
+            {mobilePanel === 'menu' ? '설정' : sectionLabel(section)}
+          </h2>
+          <button
+            type="button"
+            className="text-sm font-semibold text-gray-500 hover:text-gray-800 px-2 py-1"
+            onClick={onClose}
+          >
+            닫기
+          </button>
+        </div>
+
+        {/* 데스크탑 헤더 */}
+        <div className="hidden lg:flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
           <h2 className="text-xl font-bold">설정</h2>
           <button
             type="button"
@@ -265,7 +316,8 @@ export function SettingsModal({
         </div>
 
         <div className="flex flex-1 min-h-0">
-          <nav className="w-52 shrink-0 border-r border-gray-200 p-3 flex flex-col gap-1">
+          {/* 데스크탑 사이드 네비 */}
+          <nav className="hidden lg:flex w-52 shrink-0 border-r border-gray-200 p-3 flex-col gap-1">
             {SECTIONS.map((s) => (
               <button
                 key={s.id}
@@ -295,11 +347,48 @@ export function SettingsModal({
             </button>
           </nav>
 
-          <div className="flex-1 min-w-0 overflow-y-auto p-6">
-            {section === 'task' && <TaskSection />}
-            {section === 'menu' && <MenuManagementSection />}
-            {section === 'user' && <UserSection />}
-            {section === 'system' && <SystemSection />}
+          {/* 모바일: 섹션 목록 */}
+          {mobilePanel === 'menu' && (
+            <div className="lg:hidden flex-1 min-h-0 overflow-y-auto flex flex-col">
+              <div className="flex flex-col gap-1 p-3">
+                {SECTIONS.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => openSection(s.id)}
+                    className="flex items-center gap-3 px-3 py-3.5 rounded-[12px] text-left hover:bg-gray-50 active:bg-gray-100"
+                  >
+                    <span className="w-9 h-9 rounded-[10px] bg-gray-100 flex items-center justify-center text-gray-600 shrink-0">
+                      <FaIcon name={s.icon} />
+                    </span>
+                    <span className="flex-1 font-semibold text-gray-900">{s.label}</span>
+                    <FaIcon name="chevron-right" className="text-gray-300 shrink-0" />
+                  </button>
+                ))}
+              </div>
+              <div className="mt-auto p-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  className="flex items-center gap-3 w-full px-3 py-3.5 rounded-[12px] text-left text-danger hover:bg-gray-50"
+                  onClick={() => logout.mutate()}
+                >
+                  <span className="w-9 h-9 rounded-[10px] bg-red-50 flex items-center justify-center shrink-0">
+                    <FaIcon name="arrow-right-from-bracket" />
+                  </span>
+                  <span className="font-semibold">로그아웃</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 모바일: 섹션 내용 */}
+          <div
+            className={clsx(
+              'flex-1 min-w-0 overflow-y-auto p-4 lg:p-6',
+              mobilePanel === 'menu' && 'hidden lg:block',
+            )}
+          >
+            <SectionContent section={section} />
           </div>
         </div>
       </div>

@@ -48,6 +48,8 @@ export interface NavSecondaryItem {
   item_type: NavSecondaryItemType
   label: string
   route_path: string | null
+  page_title: string | null
+  page_description: string | null
   sort_order: number
   created_at: string
   updated_at: string
@@ -59,6 +61,8 @@ export interface NavPrimaryItem {
   icon: string
   route_path: string
   path_prefixes: string | null
+  page_title: string | null
+  page_description: string | null
   sort_order: number
   created_at: string
   updated_at: string

@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
 
+import { FaIcon } from '../components/FaIcon'
+import { PageShell } from '../components/PageShell'
+import { TaskStatusGrid } from '../components/TaskStatusGrid'
 import assetIcon from '../assets/dashboard/asset-management.svg'
 import infoIcon from '../assets/dashboard/info-management.svg'
 import taskIcon from '../assets/dashboard/task-management.svg'
-import { TaskStatusGrid } from '../components/TaskStatusGrid'
 
 const HUB_LINKS = [
   { to: '/tasks', icon: taskIcon, title: '작업 관리', caption: '할 일과 진행 상황 정리' },
@@ -11,22 +13,41 @@ const HUB_LINKS = [
   { to: '/info', icon: infoIcon, title: '정보 관리', caption: '개인 기록과 문서 모음' },
 ]
 
+function HubCard({ to, icon, title, caption }: (typeof HUB_LINKS)[number]) {
+  return (
+    <Link
+      to={to}
+      className="dashboard-hub-card group flex items-center gap-3.5 p-4 sm:flex-col sm:items-start sm:gap-5 sm:p-8"
+    >
+      <span className="dashboard-hub-icon shrink-0 flex items-center justify-center w-12 h-12 sm:w-auto sm:h-auto sm:block rounded-[14px] bg-gray-50 group-hover:bg-primary-light transition-colors sm:bg-transparent sm:rounded-none">
+        <img src={icon} alt="" className="w-8 h-8 sm:w-20 sm:h-20" />
+      </span>
+      <div className="flex-1 min-w-0">
+        <span className="block font-bold text-base sm:text-lg text-gray-900">{title}</span>
+        <span className="block text-sm text-gray-500 mt-0.5 truncate sm:whitespace-normal">{caption}</span>
+      </div>
+      <span className="shrink-0 sm:hidden flex items-center">
+        <FaIcon name="chevron-right" className="text-gray-300" />
+      </span>
+    </Link>
+  )
+}
+
 export function DashboardPage() {
   return (
-    <div className="flex flex-col gap-8 max-w-6xl mx-auto">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {HUB_LINKS.map((hub) => (
-          <Link key={hub.to} to={hub.to} className="card-flat flex flex-col gap-5 p-8">
-            <img src={hub.icon} alt="" className="w-20 h-20" />
-            <div className="flex flex-col gap-1">
-              <span className="font-bold text-lg">{hub.title}</span>
-              <span className="text-sm text-gray-500">{hub.caption}</span>
-            </div>
-          </Link>
-        ))}
-      </div>
+    <PageShell compactMobile>
+      <div className="flex flex-col gap-5 sm:gap-8">
+        <section className="flex flex-col gap-2.5 sm:gap-4">
+          <h2 className="text-xs font-semibold text-gray-400 tracking-tight px-0.5 sm:hidden">바로가기</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
+            {HUB_LINKS.map((hub) => (
+              <HubCard key={hub.to} {...hub} />
+            ))}
+          </div>
+        </section>
 
-      <TaskStatusGrid />
-    </div>
+        <TaskStatusGrid />
+      </div>
+    </PageShell>
   )
 }

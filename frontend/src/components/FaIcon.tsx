@@ -6,11 +6,14 @@ export function FaIcon({
   className,
   style,
   brand,
+  light,
 }: {
   name: string
   className?: string
   style?: CSSProperties
   brand?: boolean
+  light?: boolean
 }) {
-  return <i className={clsx(brand ? 'fa-brands' : 'fa-solid', `fa-${name}`, className)} style={style} aria-hidden />
+  const weight = brand ? 'fa-brands' : light ? 'fa-light' : 'fa-solid'
+  return <i className={clsx(weight, `fa-${name}`, className)} style={style} aria-hidden />
 }

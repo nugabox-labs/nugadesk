@@ -7,6 +7,7 @@ import { CategoryDetailPage } from './pages/CategoryDetailPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { InfoManagementPage } from './pages/InfoManagementPage'
 import { LoginPage } from './pages/LoginPage'
+import { LinksPage } from './pages/LinksPage'
 import { TaskManagementPage } from './pages/TaskManagementPage'
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
       <Route element={<RequireAuth />}>
         <Route element={<Layout />}>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/links" element={<LinksPage />} />
           <Route path="/tasks" element={<TaskManagementPage />} />
           <Route path="/assets" element={<AssetManagementPage />} />
           <Route path="/info" element={<InfoManagementPage />} />

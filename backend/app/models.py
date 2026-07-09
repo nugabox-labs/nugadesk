@@ -102,6 +102,8 @@ class NavPrimaryItem(Base):
     route_path: Mapped[str] = mapped_column(String(100), nullable=False)
     # 콤마 구분 추가 경로 접두사 — 활성 섹션 판별용 (예: 작업 섹션의 `/category`)
     path_prefixes: Mapped[str | None] = mapped_column(String(255))
+    page_title: Mapped[str | None] = mapped_column(String(100))
+    page_description: Mapped[str | None] = mapped_column(Text)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
@@ -125,8 +127,24 @@ class NavSecondaryItem(Base):
     item_type: Mapped[str] = mapped_column(String(20), nullable=False, default="link")
     label: Mapped[str] = mapped_column(String(50), nullable=False)
     route_path: Mapped[str | None] = mapped_column(String(100))
+    page_title: Mapped[str | None] = mapped_column(String(100))
+    page_description: Mapped[str | None] = mapped_column(Text)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
     primary: Mapped["NavPrimaryItem"] = relationship(back_populates="secondary_items")
+
+
+class BookmarkLink(Base):
+    """홈 > 링크 모음에 표시되는 북마크."""
+
+    __tablename__ = "bookmark_links"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    title: Mapped[str] = mapped_column(String(100), nullable=False)
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
+    note: Mapped[str | None] = mapped_column(String(255))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())

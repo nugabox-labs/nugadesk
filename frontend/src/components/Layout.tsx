@@ -1,25 +1,53 @@
 import clsx from 'clsx'
-import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 
-import { FaIcon } from './FaIcon'
+import { StickyPageHeader } from './PageHeader'
 import { PrimaryNav } from './PrimaryNav'
 import { Sidebar } from './Sidebar'
+import { LayoutProvider, useLayout } from '../context/LayoutContext'
 
-export function Layout() {
-  const [drawerOpen, setDrawerOpen] = useState(false)
+function DesktopSidebarSlide() {
+  const { sidebarOpen, sidebarSlideOpen, closeSidebarSlide } = useLayout()
+
+  if (sidebarOpen || !sidebarSlideOpen) return null
+
+  return (
+    <>
+      <div
+        className="app-drawer-backdrop hidden lg:block fixed inset-y-0 right-0 left-16 z-20"
+        onClick={closeSidebarSlide}
+        aria-hidden
+      />
+      <div
+        className={clsx(
+          'hidden lg:flex fixed inset-y-0 left-16 z-30 transition-transform duration-200 ease-out shadow-lg',
+          sidebarSlideOpen ? 'translate-x-0' : '-translate-x-full',
+        )}
+      >
+        <Sidebar onNavigate={closeSidebarSlide} />
+      </div>
+    </>
+  )
+}
+
+function LayoutBody() {
+  const { sidebarOpen, drawerOpen, setDrawerOpen } = useLayout()
 
   return (
     <div className="h-full flex">
       <PrimaryNav onNavigate={() => setDrawerOpen(false)} />
 
-      <div className="hidden lg:flex">
-        <Sidebar onNavigate={() => {}} />
-      </div>
+      {sidebarOpen && (
+        <div className="hidden lg:flex">
+          <Sidebar onNavigate={() => {}} />
+        </div>
+      )}
+
+      <DesktopSidebarSlide />
 
       {drawerOpen && (
         <div
-          className="fixed inset-0 bg-black/30 z-20 lg:hidden"
+          className="app-drawer-backdrop fixed inset-0 z-20 lg:hidden"
           onClick={() => setDrawerOpen(false)}
           aria-hidden
         />
@@ -34,18 +62,21 @@ export function Layout() {
       </div>
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <button
-          type="button"
-          className="lg:hidden fixed top-3 left-3 z-10 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-gray-600"
-          onClick={() => setDrawerOpen((v) => !v)}
-          aria-label="메뉴 열기/닫기"
-        >
-          <FaIcon name="bars" />
-        </button>
-        <main className="flex-1 min-w-0 overflow-y-auto p-4 pt-16 pb-20 lg:p-8">
-          <Outlet />
+        <main className="flex-1 min-w-0 overflow-y-auto pb-20 lg:pb-8">
+          <StickyPageHeader />
+          <div className="px-4 lg:px-8">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
+  )
+}
+
+export function Layout() {
+  return (
+    <LayoutProvider>
+      <LayoutBody />
+    </LayoutProvider>
   )
 }

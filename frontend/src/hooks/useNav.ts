@@ -73,6 +73,8 @@ export function useCreateSecondaryNav() {
       item_type: NavSecondaryItemType
       label: string
       route_path?: string | null
+      page_title?: string | null
+      page_description?: string | null
       sort_order?: number
     }) => api.post<NavSecondaryItem>('/nav/secondary', payload),
     onSuccess: invalidate,
@@ -90,6 +92,8 @@ export function useUpdateSecondaryNav() {
       item_type?: NavSecondaryItemType
       label?: string
       route_path?: string | null
+      page_title?: string | null
+      page_description?: string | null
       sort_order?: number
     }) => api.patch<NavSecondaryItem>(`/nav/secondary/${id}`, payload),
     onSuccess: invalidate,

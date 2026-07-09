@@ -163,8 +163,10 @@ function SecondaryForm({
 }) {
   const create = useCreateSecondaryNav()
   const update = useUpdateSecondaryNav()
-  const [itemType, setItemType] = useState<NavSecondaryItemType>(initial?.item_type ?? 'link')
   const [label, setLabel] = useState(initial?.label ?? '')
+  const [pageTitle, setPageTitle] = useState(initial?.page_title ?? '')
+  const [pageDescription, setPageDescription] = useState(initial?.page_description ?? '')
+  const [itemType, setItemType] = useState<NavSecondaryItemType>(initial?.item_type ?? 'link')
   const [routePath, setRoutePath] = useState(initial?.route_path ?? '/')
   const [error, setError] = useState<string | null>(null)
   const pending = create.isPending || update.isPending
@@ -181,6 +183,8 @@ function SecondaryForm({
         item_type: itemType,
         label,
         route_path: itemType === 'link' ? routePath : null,
+        page_title: itemType === 'link' ? pageTitle.trim() || null : null,
+        page_description: itemType === 'link' ? pageDescription.trim() || null : null,
       }
       if (initial) {
         await update.mutateAsync({ id: initial.id, ...payload })
@@ -217,10 +221,30 @@ function SecondaryForm({
         </label>
       </div>
       {itemType === 'link' && (
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-semibold text-gray-700">경로</span>
-          <input className="input h-9" value={routePath} onChange={(e) => setRoutePath(e.target.value)} />
-        </label>
+        <>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-semibold text-gray-700">경로</span>
+            <input className="input h-9" value={routePath} onChange={(e) => setRoutePath(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-semibold text-gray-700">페이지 제목</span>
+            <input
+              className="input h-9"
+              placeholder="비우면 메뉴 이름 사용"
+              value={pageTitle}
+              onChange={(e) => setPageTitle(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-semibold text-gray-700">페이지 설명</span>
+            <textarea
+              className="input min-h-20 py-2"
+              placeholder="제목 아래에 작게 표시됩니다"
+              value={pageDescription}
+              onChange={(e) => setPageDescription(e.target.value)}
+            />
+          </label>
+        </>
       )}
       {itemType === 'heading' && (
         <p className="text-xs text-gray-500">소제목은 클릭할 수 없는 텍스트로 2차 메뉴에 표시됩니다.</p>

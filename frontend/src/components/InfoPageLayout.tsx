@@ -32,33 +32,17 @@ function ColumnItemRow({ icon, label, href }: InfoPageColumnItem) {
 }
 
 export function InfoPageLayout({
-  icon,
-  title,
-  description,
   highlight,
   columns,
   children,
 }: {
-  icon?: string
-  title: string
-  description: string
   highlight?: string
   columns: InfoPageColumn[]
   children?: ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-8 max-w-5xl mx-auto">
-      <div className="flex flex-col gap-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          {icon && <span className="text-2xl leading-none">{icon}</span>}
-          {title}
-        </h1>
-
-        <div className="flex flex-col gap-2 border-l-[3px] border-gray-300 pl-4">
-          <p className="text-base text-gray-500">{description}</p>
-          {highlight && <p className="text-base font-bold text-gray-700">{highlight}</p>}
-        </div>
-      </div>
+    <div className="flex flex-col gap-8">
+      {highlight && <p className="text-sm font-semibold text-gray-600">{highlight}</p>}
 
       {columns.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">

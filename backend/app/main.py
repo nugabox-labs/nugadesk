@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from .cleanup import purge_expired_soft_deletes
 from .config import get_settings
 from .database import SessionLocal, init_schema
-from .routers import auth, categories, dashboard, nav, todos, uploads, version
+from .routers import auth, categories, dashboard, links, nav, todos, uploads, version
 from .uploads import AVATAR_DIR, UPLOAD_ROOT, WORKSPACE_ICON_DIR
 
 
@@ -39,6 +39,7 @@ app.include_router(version.router)
 app.include_router(dashboard.router)
 app.include_router(categories.router)
 app.include_router(nav.router)
+app.include_router(links.router)
 app.include_router(todos.router)
 app.include_router(uploads.router)
 
