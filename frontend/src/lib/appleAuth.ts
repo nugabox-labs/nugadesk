@@ -142,6 +142,18 @@ export function clearAppleAuthFragment(): void {
   window.history.replaceState(null, '', window.location.pathname + window.location.search)
 }
 
+export function redirectToAppleSignIn(clientId: string, redirectURI: string): void {
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectURI,
+    response_type: 'code id_token',
+    response_mode: 'fragment',
+    scope: 'name email',
+    state: 'nugadesk-redirect',
+  })
+  window.location.assign(`https://appleid.apple.com/auth/authorize?${params}`)
+}
+
 export async function signInWithApple(): Promise<AppleSignInResponse> {
   await loadAppleSdk()
   if (!window.AppleID?.auth) {

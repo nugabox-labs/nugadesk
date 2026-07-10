@@ -4,13 +4,11 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { AppleSignInButton } from '../components/AppleSignInButton'
 import {
-  attachAppleAuthListeners,
   clearAppleAuthFragment,
   consumeAppleAuthPending,
   isApplePopupCallback,
   parseIdTokenFromFragment,
   prepareAppleCallbackPage,
-  peekAppleAuthPending,
 } from '../lib/appleAuth'
 import {
   completeAppleLogin,
@@ -27,6 +25,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [appleProcessing, setAppleProcessing] = useState(() => window.location.hash.includes('id_token='))
   const login = useLogin()
   const appleLogin = useAppleLogin()
   const { data: appleConfig } = useAppleAuthConfig()
@@ -39,66 +38,39 @@ export function LoginPage() {
   const appleAvailable = isAppleSignInAvailable(appleConfig)
   const isPending = login.isPending || appleLogin.isPending
 
-  // Apple 리다이렉트 복귀 또는 설정 연결 팝업 콜백 처리
+  // Apple fragment 복귀(#id_token=...) 또는 설정 연결 팝업 콜백
   useEffect(() => {
     if (!appleConfig?.enabled || !appleConfig.client_id || !appleConfig.redirect_uri) return
 
-    const isPopup = isApplePopupCallback()
-    const hasAppleFragment = window.location.hash.includes('id_token=')
-
-    if (isPopup) {
+    if (isApplePopupCallback()) {
       void prepareAppleCallbackPage(appleConfig.client_id, appleConfig.redirect_uri, true)
       return
     }
 
-    if (peekAppleAuthPending() !== 'login' && !hasAppleFragment) return
+    const fragmentToken = parseIdTokenFromFragment()
+    if (!fragmentToken) return
 
     let cancelled = false
+    setAppleProcessing(true)
+    setError(null)
 
-    async function finishAppleLogin(id_token: string) {
-      const pending = consumeAppleAuthPending()
-      const rememberMe = pending?.rememberMe ?? false
-      clearAppleAuthFragment()
-      const me = await completeAppleLogin(id_token, rememberMe)
-      setUser(me.username, me.avatar_url)
-      navigate('/', { replace: true })
-    }
-
-    async function handleRedirectReturn() {
+    async function handleFragmentReturn() {
       try {
-        const fragmentToken = parseIdTokenFromFragment()
-        if (fragmentToken) {
-          await finishAppleLogin(fragmentToken)
-          return
-        }
-
-        await prepareAppleCallbackPage(appleConfig!.client_id!, appleConfig!.redirect_uri!, false)
-
-        attachAppleAuthListeners(
-          async (authorization) => {
-            if (cancelled) return
-            if (peekAppleAuthPending() !== 'login' && !parseIdTokenFromFragment()) return
-
-            try {
-              await finishAppleLogin(authorization.id_token)
-            } catch (err) {
-              const message = err instanceof ApiError ? err.message : 'Apple 로그인에 실패했습니다.'
-              setError(message)
-            }
-          },
-          (message) => {
-            if (!cancelled) setError(message)
-          },
-        )
+        const pending = consumeAppleAuthPending()
+        const rememberMe = pending?.rememberMe ?? false
+        clearAppleAuthFragment()
+        const me = await completeAppleLogin(fragmentToken!, rememberMe)
+        if (cancelled) return
+        setUser(me.username, me.avatar_url)
+        navigate('/', { replace: true })
       } catch (err) {
-        if (!cancelled) {
-          const message = err instanceof ApiError ? err.message : 'Apple 로그인에 실패했습니다.'
-          setError(message)
-        }
+        if (cancelled) return
+        setAppleProcessing(false)
+        setError(err instanceof ApiError ? err.message : 'Apple 로그인에 실패했습니다.')
       }
     }
 
-    void handleRedirectReturn()
+    void handleFragmentReturn()
     return () => {
       cancelled = true
     }
@@ -119,20 +91,16 @@ export function LoginPage() {
     }
   }
 
-  async function handleAppleLogin() {
+  function handleAppleLogin() {
     setError(null)
-    try {
-      await appleLogin.mutateAsync(rememberMe)
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message)
-      } else {
-        setError('Apple 로그인에 실패했습니다.')
-      }
-    }
+    appleLogin.mutate(rememberMe, {
+      onError: (err) => {
+        setError(err instanceof ApiError ? err.message : 'Apple 로그인에 실패했습니다.')
+      },
+    })
   }
 
-  if (isApplePopupCallback()) {
+  if (isApplePopupCallback() || appleProcessing) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50 px-4">
         <p className="text-sm text-gray-500">Apple 로그인 처리 중…</p>

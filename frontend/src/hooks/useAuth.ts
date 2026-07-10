@@ -6,6 +6,7 @@ import {
   initAppleAuth,
   isAppleOriginAvailable,
   loadAppleSdk,
+  redirectToAppleSignIn,
   setAppleAuthPending,
   signInWithApple,
 } from '../lib/appleAuth'
@@ -83,23 +84,13 @@ export function useAppleAuthConfig() {
   })
 }
 
-/** 로그인 페이지: 전체 창 리다이렉트 모드 (팝업 콜백 문제 회피) */
+/** 로그인 페이지: Apple authorize URL로 직접 리다이렉트 (fragment 모드, POST 405 회피) */
 export function useAppleLogin() {
-  const queryClient = useQueryClient()
-  const setUser = useAuthStore((s) => s.setUser)
-
   return useMutation({
     mutationFn: async (remember_me: boolean) => {
       const config = await fetchAppleConfig()
       setAppleAuthPending('login', remember_me)
-      await loadAppleSdk()
-      initAppleAuth(config.client_id!, config.redirect_uri!, false)
-      await signInWithApple()
-    },
-    onSuccess: async () => {
-      const me = await api.get<MeResponse>('/auth/me')
-      setUser(me.username, me.avatar_url)
-      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+      redirectToAppleSignIn(config.client_id!, config.redirect_uri!)
     },
   })
 }
