@@ -1,12 +1,31 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api, ApiError } from '../lib/api'
+import type { AppleAuthConfig } from '../lib/appleAuth'
+import { initAppleAuth, loadAppleSdk, signInWithApple } from '../lib/appleAuth'
 import { useAuthStore } from '../store/auth'
 
 interface MeResponse {
   username: string
   remember: boolean
   avatar_url: string | null
+  apple_linked: boolean
+}
+
+async function getAppleIdToken(): Promise<string> {
+  const config = await api.get<AppleAuthConfig>('/auth/apple/config')
+  if (!config.enabled || !config.client_id || !config.redirect_uri) {
+    throw new ApiError(503, 'Apple 로그인이 설정되지 않았습니다.')
+  }
+
+  if (`${window.location.origin}/login` !== config.redirect_uri) {
+    throw new ApiError(400, 'Apple 로그인은 등록된 도메인에서만 사용할 수 있습니다.')
+  }
+
+  await loadAppleSdk()
+  initAppleAuth(config.client_id, config.redirect_uri)
+  const appleResponse = await signInWithApple()
+  return appleResponse.authorization.id_token
 }
 
 export function useMeQuery() {
@@ -47,6 +66,45 @@ export function useLogin() {
   })
 }
 
+export function useAppleAuthConfig() {
+  return useQuery({
+    queryKey: ['auth', 'apple', 'config'],
+    queryFn: () => api.get<AppleAuthConfig>('/auth/apple/config'),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useAppleLogin() {
+  const queryClient = useQueryClient()
+  const setUser = useAuthStore((s) => s.setUser)
+
+  return useMutation({
+    mutationFn: async (remember_me: boolean) => {
+      const id_token = await getAppleIdToken()
+      await api.post('/auth/apple/login', { id_token, remember_me })
+    },
+    onSuccess: async () => {
+      const me = await api.get<MeResponse>('/auth/me')
+      setUser(me.username, me.avatar_url)
+      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+    },
+  })
+}
+
+export function useAppleLink() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      const id_token = await getAppleIdToken()
+      return api.post<MeResponse>('/auth/apple/link', { id_token })
+    },
+    onSuccess: (me) => {
+      queryClient.setQueryData(['auth', 'me'], me)
+    },
+  })
+}
+
 export function useLogout() {
   const queryClient = useQueryClient()
   const setUser = useAuthStore((s) => s.setUser)
@@ -78,4 +136,12 @@ export function useChangePassword() {
     mutationFn: (payload: { current_password: string; new_password: string }) =>
       api.patch('/auth/password', payload),
   })
+}
+
+export function isAppleSignInAvailable(config: AppleAuthConfig | undefined): boolean {
+  return (
+    config?.enabled === true &&
+    config.redirect_uri != null &&
+    `${window.location.origin}/login` === config.redirect_uri
+  )
 }

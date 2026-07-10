@@ -2,7 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 
-import { useLogin } from '../hooks/useAuth'
+import { AppleSignInButton } from '../components/AppleSignInButton'
+import { isAppleSignInAvailable, useAppleAuthConfig, useAppleLogin, useLogin } from '../hooks/useAuth'
 import { ApiError } from '../lib/api'
 import { useAuthStore } from '../store/auth'
 
@@ -12,8 +13,14 @@ export function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const login = useLogin()
+  const appleLogin = useAppleLogin()
+  const { data: appleConfig } = useAppleAuthConfig()
   const currentUsername = useAuthStore((s) => s.username)
   const location = useLocation()
+
+  const appleConfigured = appleConfig?.enabled === true
+  const appleAvailable = isAppleSignInAvailable(appleConfig)
+  const isPending = login.isPending || appleLogin.isPending
 
   if (currentUsername) {
     const from = (location.state as { from?: string })?.from ?? '/'
@@ -27,6 +34,21 @@ export function LoginPage() {
       await login.mutateAsync({ username, password, remember_me: rememberMe })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '로그인에 실패했습니다.')
+    }
+  }
+
+  async function handleAppleLogin() {
+    setError(null)
+    try {
+      await appleLogin.mutateAsync(rememberMe)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message)
+      } else if (err instanceof Error && err.message.includes('popup')) {
+        setError('Apple 로그인 창이 닫혔습니다.')
+      } else {
+        setError('Apple 로그인에 실패했습니다.')
+      }
     }
   }
 
@@ -69,10 +91,27 @@ export function LoginPage() {
 
           {error && <p className="text-sm text-danger">{error}</p>}
 
-          <button type="submit" className="btn btn-primary btn-lg mt-2" disabled={login.isPending}>
+          <button type="submit" className="btn btn-primary btn-lg mt-2" disabled={isPending}>
             {login.isPending ? '로그인 중...' : '로그인'}
           </button>
         </form>
+
+        {appleConfigured && (
+          <>
+            <div className="flex items-center gap-3 my-5">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs text-gray-400">또는</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+
+            <AppleSignInButton
+              pending={appleLogin.isPending}
+              disabled={!appleAvailable || isPending}
+              disabledHint="Apple 로그인은 https://work.nugabox.com 에서만 사용할 수 있습니다."
+              onClick={handleAppleLogin}
+            />
+          </>
+        )}
       </div>
     </div>
   )

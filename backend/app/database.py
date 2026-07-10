@@ -35,6 +35,7 @@ SCHEMA_PATCHES: list[str] = [
     "ALTER TABLE nav_primary_items ALTER COLUMN icon TYPE VARCHAR(255)",
     "ALTER TABLE nav_primary_items ALTER COLUMN icon DROP NOT NULL",
     "ALTER TABLE todos ADD COLUMN IF NOT EXISTS repeat_rule VARCHAR(20)",
+    "ALTER TABLE app_users ADD COLUMN IF NOT EXISTS apple_sub VARCHAR(255)",
 ]
 
 
@@ -250,6 +251,19 @@ def _migrate_todo_priority(conn) -> None:
     conn.execute(text("UPDATE todos SET priority = 0 WHERE priority IN (1, 5)"))
 
 
+def _relax_legacy_todo_project_id(conn) -> None:
+    """분류 마이그레이션 후에도 todos.project_id NOT NULL이 남으면 신규 INSERT가 실패한다."""
+    has_project_id = conn.execute(
+        text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = 'todos' AND column_name = 'project_id'"
+        )
+    ).scalar()
+    if not has_project_id:
+        return
+    conn.execute(text("ALTER TABLE todos ALTER COLUMN project_id DROP NOT NULL"))
+
+
 def init_schema() -> None:
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         conn.execute(text("SELECT pg_advisory_lock(:key)"), {"key": SCHEMA_INIT_LOCK_KEY})
@@ -262,6 +276,7 @@ def init_schema() -> None:
             # data migration is all-or-nothing.
             with engine.begin() as txn_conn:
                 _migrate_legacy_hierarchy(txn_conn)
+                _relax_legacy_todo_project_id(txn_conn)
                 _migrate_todo_priority(txn_conn)
                 _seed_nav_menus(txn_conn)
                 _patch_nav_defaults(txn_conn)

@@ -100,10 +100,26 @@ class LoginRequest(BaseModel):
     remember_me: bool = False
 
 
+class AppleAuthConfigOut(BaseModel):
+    enabled: bool
+    client_id: str | None = None
+    redirect_uri: str | None = None
+
+
+class AppleLinkRequest(BaseModel):
+    id_token: str
+
+
+class AppleLoginRequest(BaseModel):
+    id_token: str
+    remember_me: bool = False
+
+
 class MeOut(BaseModel):
     username: str
     remember: bool
     avatar_url: str | None = None
+    apple_linked: bool = False
 
 
 class PasswordChangeRequest(BaseModel):

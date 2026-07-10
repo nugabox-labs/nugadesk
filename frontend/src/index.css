@@ -176,6 +176,13 @@
     background-color: var(--color-danger);
     color: white;
   }
+  .btn-apple {
+    background-color: #000;
+    color: #fff;
+  }
+  .btn-apple:hover:not(:disabled) {
+    background-color: #1a1a1a;
+  }
 
   .card {
     background: var(--color-white);
@@ -192,10 +199,17 @@
     background: var(--color-white);
     border-radius: var(--radius-btn-lg);
     border: 1px solid var(--color-gray-100);
-    transition: background-color 0.15s ease, border-color 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .dashboard-hub-card:hover {
+    background: var(--color-gray-50);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.06);
   }
   .dashboard-hub-card:active {
-    background: var(--color-gray-50);
+    background: var(--color-gray-100);
   }
   @media (min-width: 640px) {
     .dashboard-hub-card {

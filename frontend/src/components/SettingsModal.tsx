@@ -3,10 +3,11 @@ import type { ChangeEvent, FormEvent } from 'react'
 import clsx from 'clsx'
 
 import { FaIcon } from './FaIcon'
+import { AppleSignInButton } from './AppleSignInButton'
 import { ICloudSyncSection } from './ICloudSyncSection'
 import { MenuManagementSection } from './MenuManagementSection'
 import { VersionBadge } from './VersionBadge'
-import { useChangePassword, useLogout, useUpdateAvatar } from '../hooks/useAuth'
+import { useChangePassword, useAppleAuthConfig, useAppleLink, useLogout, useMeQuery, useUpdateAvatar, isAppleSignInAvailable } from '../hooks/useAuth'
 import { useUploadAvatar } from '../hooks/useUploads'
 import { useVersion } from '../hooks/useVersion'
 import { ApiError } from '../lib/api'
@@ -69,9 +70,17 @@ function UserSection() {
   const uploadAvatar = useUploadAvatar()
   const updateAvatar = useUpdateAvatar()
   const changePassword = useChangePassword()
+  const { data: me } = useMeQuery()
+  const { data: appleConfig } = useAppleAuthConfig()
+  const appleLink = useAppleLink()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [avatarError, setAvatarError] = useState<string | null>(null)
+  const [appleError, setAppleError] = useState<string | null>(null)
+
+  const appleConfigured = appleConfig?.enabled === true
+  const appleAvailable = isAppleSignInAvailable(appleConfig)
+  const appleLinked = me?.apple_linked === true
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -116,6 +125,21 @@ function UserSection() {
     )
   }
 
+  async function handleAppleLink() {
+    setAppleError(null)
+    try {
+      await appleLink.mutateAsync()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setAppleError(err.message)
+      } else if (err instanceof Error && err.message.includes('popup')) {
+        setAppleError('Apple 로그인 창이 닫혔습니다.')
+      } else {
+        setAppleError('Apple 로그인 연결에 실패했습니다.')
+      }
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -151,6 +175,33 @@ function UserSection() {
         <h3 className="font-bold text-base">아이디</h3>
         <p className="text-sm text-gray-700">{username}</p>
       </div>
+
+      {appleConfigured && (
+        <div className="flex flex-col gap-2">
+          <h3 className="font-bold text-base">Apple 로그인</h3>
+          {appleLinked ? (
+            <p className="text-sm text-gray-700 flex items-center gap-2">
+              <FaIcon name="circle-check" className="text-success" />
+              Apple 계정이 연결되어 있습니다.
+            </p>
+          ) : (
+            <>
+              <p className="text-xs text-gray-500">
+                연결 후에는 로그인 페이지에서 Apple ID로 {username} 계정에 로그인할 수 있습니다.
+              </p>
+              <AppleSignInButton
+                label="Apple 로그인 연결"
+                className="!w-auto self-start"
+                pending={appleLink.isPending}
+                disabled={!appleAvailable}
+                disabledHint="Apple 로그인 연결은 https://work.nugabox.com 에서만 가능합니다."
+                onClick={handleAppleLink}
+              />
+              {appleError && <p className="text-xs text-danger">{appleError}</p>}
+            </>
+          )}
+        </div>
+      )}
 
       <form onSubmit={submitPassword} className="flex flex-col gap-2">
         <h3 className="font-bold text-base">비밀번호 변경</h3>

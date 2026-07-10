@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     session_short_hours: int = 12
     session_remember_days: int = 180
 
+    # Sign in with Apple (웹 Services ID). 비어 있으면 Apple 로그인 버튼 비활성.
+    apple_client_id: str = ""
+    # Apple Developer에 등록한 Return URL (HTTPS 도메인만 허용, localhost 불가).
+    apple_redirect_uri: str = ""
+
     icloud_poll_enabled: bool = True
     icloud_poll_interval_seconds: int = 300
     icloud_auto_sync_debounce_seconds: int = 3

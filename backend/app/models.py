@@ -34,6 +34,8 @@ class AppUser(Base):
     username: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(String(255))
+    # Sign in with Apple — Apple이 발급한 고유 subject. 최초 Apple 로그인 시 자동 연결.
+    apple_sub: Mapped[str | None] = mapped_column(String(255), unique=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
