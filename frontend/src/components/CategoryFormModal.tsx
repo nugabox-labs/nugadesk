@@ -66,7 +66,7 @@ export function CategoryFormModal({
         {
           id: initial.id,
           name: name.trim(),
-          ...(isTopLevel ? { icon, color } : {}),
+          ...(isTopLevel ? { icon, color: color ?? undefined } : {}),
           icloud_list_uid: icloudListUid || null,
           icloud_list_name: icloudListName.trim() || null,
         },
@@ -77,7 +77,7 @@ export function CategoryFormModal({
         {
           name: name.trim(),
           parent_id: parentId,
-          ...(isTopLevel ? { icon, color } : {}),
+          ...(isTopLevel ? { icon, color: color ?? undefined } : {}),
           icloud_list_uid: icloudListUid || undefined,
           icloud_list_name: icloudListName.trim() || undefined,
         },
