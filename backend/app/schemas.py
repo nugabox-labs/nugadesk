@@ -104,6 +104,7 @@ class AppleAuthConfigOut(BaseModel):
     enabled: bool
     client_id: str | None = None
     redirect_uri: str | None = None
+    login_redirect_uri: str | None = None
 
 
 class AppleLinkRequest(BaseModel):

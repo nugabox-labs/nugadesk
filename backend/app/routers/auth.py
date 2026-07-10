@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -76,7 +77,12 @@ def apple_config():
     redirect_uri = settings.apple_redirect_uri.strip()
     if not client_id or not redirect_uri:
         return AppleAuthConfigOut(enabled=False)
-    return AppleAuthConfigOut(enabled=True, client_id=client_id, redirect_uri=redirect_uri)
+    return AppleAuthConfigOut(
+        enabled=True,
+        client_id=client_id,
+        redirect_uri=redirect_uri,
+        login_redirect_uri=settings.apple_login_redirect_uri.strip() or None,
+    )
 
 
 @router.post("/login")
@@ -87,6 +93,34 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
 
     _set_session_cookie(response, user.username, payload.remember_me)
     return {"ok": True}
+
+
+@router.post("/apple/callback")
+def apple_callback(
+    db: Session = Depends(get_db),
+    id_token: str = Form(...),
+    state: str = Form(default=""),
+):
+    """Apple이 response_mode=form_post로 직접 POST하는 로그인 페이지 전체-리다이렉트 콜백.
+
+    scope에 name/email이 있으면 Apple은 fragment/query가 아닌 form_post만 허용하므로,
+    정적 파일만 서빙하는 nginx가 405를 내지 않도록 /api/ 하위(백엔드 프록시)로 받는다.
+    로그인 성공/실패 모두 세션 쿠키만 얹고 프론트 라우트로 303 리다이렉트한다.
+    """
+    remember_me = state.endswith("-remember-1")
+
+    try:
+        apple_sub = _verify_apple_sub(id_token)
+    except HTTPException:
+        return RedirectResponse(url="/login?apple_error=invalid", status_code=status.HTTP_303_SEE_OTHER)
+
+    user = db.scalar(select(AppUser).where(AppUser.apple_sub == apple_sub))
+    if user is None:
+        return RedirectResponse(url="/login?apple_error=notlinked", status_code=status.HTTP_303_SEE_OTHER)
+
+    redirect = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    _set_session_cookie(redirect, user.username, remember_me)
+    return redirect
 
 
 @router.post("/apple/login")
