@@ -189,23 +189,34 @@ function AddTodoRow({
     )
   }
 
-  function submit(e: FormEvent) {
-    e.preventDefault()
-    if (!title.trim()) return
-    createTodo.mutate({ title: title.trim() }, { onSuccess: close })
+  function submit(e?: FormEvent) {
+    e?.preventDefault()
+    const trimmed = title.trim()
+    if (!trimmed) return
+    createTodo.mutate({ title: trimmed }, { onSuccess: close })
   }
 
   return (
-    <form onSubmit={submit} className="flex gap-2">
+    <form onSubmit={submit} className="flex items-center gap-2">
       <input
-        className="input h-9"
+        className="input h-8 min-h-8 flex-1 py-0 text-sm rounded-[var(--radius-btn-sm)]"
         autoFocus
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="할 일 제목"
-        onBlur={() => !title && close()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+            e.preventDefault()
+            submit()
+          }
+        }}
+        onBlur={(e) => {
+          const next = e.relatedTarget
+          if (next && e.currentTarget.form?.contains(next)) return
+          if (!title.trim()) close()
+        }}
       />
-      <button type="submit" className="btn btn-primary btn-sm">
+      <button type="submit" className="btn btn-primary btn-sm shrink-0">
         추가
       </button>
     </form>
@@ -407,12 +418,16 @@ export function CategoryNode({
           ))}
           <div className="flex flex-col gap-2">
             {isCard ? (
-              addingTodo && (
-                <AddTodoRow
-                  categoryId={node.id}
-                  defaultOpen
-                  onClose={() => setAddingTodo(false)}
-                />
+              hideTopLevelChrome ? (
+                <AddTodoRow categoryId={node.id} />
+              ) : (
+                addingTodo && (
+                  <AddTodoRow
+                    categoryId={node.id}
+                    defaultOpen
+                    onClose={() => setAddingTodo(false)}
+                  />
+                )
               )
             ) : (
               <AddTodoRow categoryId={node.id} />
