@@ -7,7 +7,6 @@ import {
   isAppleOriginAvailable,
   loadAppleSdk,
   redirectToAppleSignIn,
-  setAppleAuthPending,
   signInWithApple,
 } from '../lib/appleAuth'
 import { useAuthStore } from '../store/auth'
@@ -84,13 +83,18 @@ export function useAppleAuthConfig() {
   })
 }
 
-/** 로그인 페이지: Apple authorize URL로 직접 리다이렉트 (fragment 모드, POST 405 회피) */
+/**
+ * 로그인 페이지: Apple authorize URL로 직접 리다이렉트 (response_mode=form_post).
+ * login_redirect_uri(백엔드 /api/auth/apple/callback)가 세션 쿠키를 심고 SPA로 돌려보낸다.
+ */
 export function useAppleLogin() {
   return useMutation({
     mutationFn: async (remember_me: boolean) => {
       const config = await fetchAppleConfig()
-      setAppleAuthPending('login', remember_me)
-      redirectToAppleSignIn(config.client_id!, config.redirect_uri!)
+      if (!config.login_redirect_uri) {
+        throw new ApiError(503, 'Apple 로그인이 설정되지 않았습니다.')
+      }
+      redirectToAppleSignIn(config.client_id!, config.login_redirect_uri, remember_me)
     },
   })
 }
@@ -108,11 +112,6 @@ export function useAppleLink() {
       queryClient.setQueryData(['auth', 'me'], me)
     },
   })
-}
-
-export async function completeAppleLogin(id_token: string, remember_me: boolean): Promise<MeResponse> {
-  await api.post('/auth/apple/login', { id_token, remember_me })
-  return api.get<MeResponse>('/auth/me')
 }
 
 export async function completeAppleLink(id_token: string): Promise<MeResponse> {

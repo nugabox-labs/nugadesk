@@ -3,34 +3,25 @@ import type { FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { AppleSignInButton } from '../components/AppleSignInButton'
-import {
-  clearAppleAuthFragment,
-  consumeAppleAuthPending,
-  isApplePopupCallback,
-  parseIdTokenFromFragment,
-  prepareAppleCallbackPage,
-} from '../lib/appleAuth'
-import {
-  completeAppleLogin,
-  isAppleSignInAvailable,
-  useAppleAuthConfig,
-  useAppleLogin,
-  useLogin,
-} from '../hooks/useAuth'
+import { isApplePopupCallback, prepareAppleCallbackPage } from '../lib/appleAuth'
+import { isAppleSignInAvailable, useAppleAuthConfig, useAppleLogin, useLogin } from '../hooks/useAuth'
 import { ApiError } from '../lib/api'
 import { useAuthStore } from '../store/auth'
+
+const APPLE_ERROR_MESSAGES: Record<string, string> = {
+  notlinked: 'Apple 로그인이 연결되지 않았습니다. 설정에서 먼저 연결해 주세요.',
+  invalid: 'Apple 로그인 토큰이 유효하지 않습니다.',
+}
 
 export function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [appleProcessing, setAppleProcessing] = useState(() => window.location.hash.includes('id_token='))
   const login = useLogin()
   const appleLogin = useAppleLogin()
   const { data: appleConfig } = useAppleAuthConfig()
   const currentUsername = useAuthStore((s) => s.username)
-  const setUser = useAuthStore((s) => s.setUser)
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -38,43 +29,23 @@ export function LoginPage() {
   const appleAvailable = isAppleSignInAvailable(appleConfig)
   const isPending = login.isPending || appleLogin.isPending
 
-  // Apple fragment 복귀(#id_token=...) 또는 설정 연결 팝업 콜백
+  // 백엔드 /api/auth/apple/callback이 실패 시 ?apple_error=...로 돌려보낸 경우 안내 표시
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const appleError = params.get('apple_error')
+    if (!appleError) return
+
+    setError(APPLE_ERROR_MESSAGES[appleError] ?? 'Apple 로그인에 실패했습니다.')
+    params.delete('apple_error')
+    navigate({ search: params.toString() }, { replace: true })
+  }, [location.search, navigate])
+
+  // 설정 연결 팝업 콜백: 팝업이 redirect_uri로 돌아왔을 때 SDK를 다시 초기화해 opener로 relay
   useEffect(() => {
     if (!appleConfig?.enabled || !appleConfig.client_id || !appleConfig.redirect_uri) return
-
-    if (isApplePopupCallback()) {
-      void prepareAppleCallbackPage(appleConfig.client_id, appleConfig.redirect_uri, true)
-      return
-    }
-
-    const fragmentToken = parseIdTokenFromFragment()
-    if (!fragmentToken) return
-
-    let cancelled = false
-    setAppleProcessing(true)
-    setError(null)
-
-    async function handleFragmentReturn() {
-      try {
-        const pending = consumeAppleAuthPending()
-        const rememberMe = pending?.rememberMe ?? false
-        clearAppleAuthFragment()
-        const me = await completeAppleLogin(fragmentToken!, rememberMe)
-        if (cancelled) return
-        setUser(me.username, me.avatar_url)
-        navigate('/', { replace: true })
-      } catch (err) {
-        if (cancelled) return
-        setAppleProcessing(false)
-        setError(err instanceof ApiError ? err.message : 'Apple 로그인에 실패했습니다.')
-      }
-    }
-
-    void handleFragmentReturn()
-    return () => {
-      cancelled = true
-    }
-  }, [appleConfig, navigate, setUser])
+    if (!isApplePopupCallback()) return
+    void prepareAppleCallbackPage(appleConfig.client_id, appleConfig.redirect_uri, true)
+  }, [appleConfig])
 
   if (currentUsername) {
     const from = (location.state as { from?: string })?.from ?? '/'
@@ -100,7 +71,7 @@ export function LoginPage() {
     })
   }
 
-  if (isApplePopupCallback() || appleProcessing) {
+  if (isApplePopupCallback()) {
     return (
       <div className="h-full flex items-center justify-center bg-gray-50 px-4">
         <p className="text-sm text-gray-500">Apple 로그인 처리 중…</p>

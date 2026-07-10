@@ -63,6 +63,31 @@ multi-user support, just moving the one credential from a file into the DB so it
 Not started: workspace memo kanban. iCloud sync phase 3 done (2026-07-09): background poll +
 debounced auto-sync after local mutations.
 
+**Sign in with Apple — web login, two redirect_uris (2026-07-10 fix):** Apple's `/auth/authorize`
+hard-rejects `response_mode=query`/`fragment` with `invalid_request: response_mode must be
+form_post when name or email scope is requested` whenever `scope` includes `name`/`email` — which
+we always request. Earlier commits (`684daf2`/`933cd0f`/`a8d1849`) chased the symptom (nginx 405 on
+`POST /login`, since `frontend/nginx.conf` only serves static files there) by switching
+`response_mode` to `fragment`, which just traded the 405 for this hard rejection at Apple's server.
+The actual fix needed two separate registered Return URLs on the same Apple Services ID (Apple
+allows several per Services ID):
+- `APPLE_REDIRECT_URI` (`https://work.nugabox.com/login`, unchanged) — used only by the **popup**
+  flow (설정 → Apple 계정 연결), which uses `response_mode=web_message`; Apple relays the result via
+  `postMessage` to the opener rather than POSTing a body, so this is exempt from the form_post rule
+  and the static frontend page can keep serving as its landing target.
+- `APPLE_LOGIN_REDIRECT_URI` (`https://work.nugabox.com/api/auth/apple/callback`, new) — used only
+  by the **login page's full-page redirect** (`frontend/src/lib/appleAuth.ts::redirectToAppleSignIn`,
+  now `response_mode=form_post`). Registered under `/api/` so nginx's existing proxy (which passes
+  all methods) forwards Apple's POST to the backend instead of 405ing. `POST /api/auth/apple/callback`
+  (`backend/app/routers/auth.py`) verifies the id_token, sets the session cookie itself, and 303s the
+  browser straight to `/` (or `/login?apple_error=notlinked|invalid` on failure) — no client-side
+  token handoff needed since it's a real top-level POST from Apple's server, not a JS-mediated one.
+  `remember_me` rides in the `state` param (`nugadesk-login-remember-{0,1}`) since there's no live JS
+  context on the return trip to read sessionStorage from.
+- If this ever needs to change again: both env vars must stay registered as Return URLs on the Apple
+  Developer Services ID **at the same time** the corresponding code path changes, or the flow that
+  still points at the stale URL will start failing at Apple's server, not ours.
+
 ## Constraints
 
 - Never install the actual Toss Design System npm package (private scope, App-in-Toss-partner
