@@ -1,9 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { AppleSignInButton } from '../components/AppleSignInButton'
-import { isAppleSignInAvailable, useAppleAuthConfig, useAppleLogin, useLogin } from '../hooks/useAuth'
+import {
+  attachAppleAuthListeners,
+  consumeAppleAuthPending,
+  isApplePopupCallback,
+  prepareAppleCallbackPage,
+  peekAppleAuthPending,
+} from '../lib/appleAuth'
+import {
+  completeAppleLogin,
+  isAppleSignInAvailable,
+  useAppleAuthConfig,
+  useAppleLogin,
+  useLogin,
+} from '../hooks/useAuth'
 import { ApiError } from '../lib/api'
 import { useAuthStore } from '../store/auth'
 
@@ -16,11 +29,62 @@ export function LoginPage() {
   const appleLogin = useAppleLogin()
   const { data: appleConfig } = useAppleAuthConfig()
   const currentUsername = useAuthStore((s) => s.username)
+  const setUser = useAuthStore((s) => s.setUser)
   const location = useLocation()
+  const navigate = useNavigate()
 
   const appleConfigured = appleConfig?.enabled === true
   const appleAvailable = isAppleSignInAvailable(appleConfig)
   const isPending = login.isPending || appleLogin.isPending
+
+  // Apple 리다이렉트 복귀 또는 설정 연결 팝업 콜백 처리
+  useEffect(() => {
+    if (!appleConfig?.enabled || !appleConfig.client_id || !appleConfig.redirect_uri) return
+
+    const isPopup = isApplePopupCallback()
+
+    if (isPopup) {
+      void prepareAppleCallbackPage(appleConfig.client_id, appleConfig.redirect_uri, true)
+      return
+    }
+
+    if (peekAppleAuthPending() !== 'login') return
+
+    let cancelled = false
+
+    async function handleRedirectReturn() {
+      try {
+        await prepareAppleCallbackPage(appleConfig!.client_id!, appleConfig!.redirect_uri!, false)
+
+        attachAppleAuthListeners(
+          async (authorization) => {
+            if (cancelled) return
+            const pending = consumeAppleAuthPending()
+            if (!pending || pending.action !== 'login') return
+
+            try {
+              const me = await completeAppleLogin(authorization.id_token, pending.rememberMe)
+              setUser(me.username, me.avatar_url)
+              navigate('/', { replace: true })
+            } catch (err) {
+              const message = err instanceof ApiError ? err.message : 'Apple 로그인에 실패했습니다.'
+              setError(message)
+            }
+          },
+          (message) => {
+            if (!cancelled) setError(message)
+          },
+        )
+      } catch {
+        if (!cancelled) setError('Apple 로그인 초기화에 실패했습니다.')
+      }
+    }
+
+    void handleRedirectReturn()
+    return () => {
+      cancelled = true
+    }
+  }, [appleConfig, navigate, setUser])
 
   if (currentUsername) {
     const from = (location.state as { from?: string })?.from ?? '/'
@@ -44,12 +108,18 @@ export function LoginPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message)
-      } else if (err instanceof Error && err.message.includes('popup')) {
-        setError('Apple 로그인 창이 닫혔습니다.')
       } else {
         setError('Apple 로그인에 실패했습니다.')
       }
     }
+  }
+
+  if (isApplePopupCallback()) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-50 px-4">
+        <p className="text-sm text-gray-500">Apple 로그인 처리 중…</p>
+      </div>
+    )
   }
 
   return (
