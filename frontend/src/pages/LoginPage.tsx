@@ -5,8 +5,10 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AppleSignInButton } from '../components/AppleSignInButton'
 import {
   attachAppleAuthListeners,
+  clearAppleAuthFragment,
   consumeAppleAuthPending,
   isApplePopupCallback,
+  parseIdTokenFromFragment,
   prepareAppleCallbackPage,
   peekAppleAuthPending,
 } from '../lib/appleAuth'
@@ -42,30 +44,43 @@ export function LoginPage() {
     if (!appleConfig?.enabled || !appleConfig.client_id || !appleConfig.redirect_uri) return
 
     const isPopup = isApplePopupCallback()
+    const hasAppleFragment = window.location.hash.includes('id_token=')
 
     if (isPopup) {
       void prepareAppleCallbackPage(appleConfig.client_id, appleConfig.redirect_uri, true)
       return
     }
 
-    if (peekAppleAuthPending() !== 'login') return
+    if (peekAppleAuthPending() !== 'login' && !hasAppleFragment) return
 
     let cancelled = false
 
+    async function finishAppleLogin(id_token: string) {
+      const pending = consumeAppleAuthPending()
+      const rememberMe = pending?.rememberMe ?? false
+      clearAppleAuthFragment()
+      const me = await completeAppleLogin(id_token, rememberMe)
+      setUser(me.username, me.avatar_url)
+      navigate('/', { replace: true })
+    }
+
     async function handleRedirectReturn() {
       try {
+        const fragmentToken = parseIdTokenFromFragment()
+        if (fragmentToken) {
+          await finishAppleLogin(fragmentToken)
+          return
+        }
+
         await prepareAppleCallbackPage(appleConfig!.client_id!, appleConfig!.redirect_uri!, false)
 
         attachAppleAuthListeners(
           async (authorization) => {
             if (cancelled) return
-            const pending = consumeAppleAuthPending()
-            if (!pending || pending.action !== 'login') return
+            if (peekAppleAuthPending() !== 'login' && !parseIdTokenFromFragment()) return
 
             try {
-              const me = await completeAppleLogin(authorization.id_token, pending.rememberMe)
-              setUser(me.username, me.avatar_url)
-              navigate('/', { replace: true })
+              await finishAppleLogin(authorization.id_token)
             } catch (err) {
               const message = err instanceof ApiError ? err.message : 'Apple 로그인에 실패했습니다.'
               setError(message)
@@ -75,8 +90,11 @@ export function LoginPage() {
             if (!cancelled) setError(message)
           },
         )
-      } catch {
-        if (!cancelled) setError('Apple 로그인 초기화에 실패했습니다.')
+      } catch (err) {
+        if (!cancelled) {
+          const message = err instanceof ApiError ? err.message : 'Apple 로그인에 실패했습니다.'
+          setError(message)
+        }
       }
     }
 

@@ -27,6 +27,7 @@ export interface AppleAuthInitConfig {
   redirectURI: string
   usePopup: boolean
   state?: string
+  responseMode?: 'query' | 'fragment' | 'form_post' | 'web_message'
 }
 
 interface AppleSignInSuccessEvent extends CustomEvent {
@@ -124,7 +125,21 @@ export function initAppleAuth(clientId: string, redirectURI: string, usePopup: b
     redirectURI,
     usePopup,
     state: `nugadesk-${usePopup ? 'popup' : 'redirect'}`,
+    // 리다이렉트 모드는 form_post(기본값) 대신 fragment — nginx 정적 서버가 POST /login 을 405로 거부함
+    responseMode: usePopup ? 'web_message' : 'fragment',
   })
+}
+
+/** 리다이렉트 복귀 URL hash(#id_token=...)에서 id_token 추출 */
+export function parseIdTokenFromFragment(): string | null {
+  const hash = window.location.hash.replace(/^#/, '')
+  if (!hash) return null
+  return new URLSearchParams(hash).get('id_token')
+}
+
+export function clearAppleAuthFragment(): void {
+  if (!window.location.hash) return
+  window.history.replaceState(null, '', window.location.pathname + window.location.search)
 }
 
 export async function signInWithApple(): Promise<AppleSignInResponse> {
