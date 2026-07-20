@@ -70,6 +70,8 @@ export function usePageMeta(overrides?: { title?: string; description?: string }
     const description =
       overrides?.description ?? (categoryNode ? undefined : navMeta?.description)
 
-    return { title, description, breadcrumbs, activePrimary }
+    const icon = overrides?.title ? null : (categoryNode?.icon ?? null)
+
+    return { title, description, icon, breadcrumbs, activePrimary }
   }, [pathname, categoryId, documentId, navItems, categories, document, overrides?.title, overrides?.description])
 }

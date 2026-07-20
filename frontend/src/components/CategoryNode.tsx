@@ -10,6 +10,7 @@ import { Modal } from './Modal'
 import { ProgressRing } from './ProgressRing'
 import { useDeleteCategory } from '../hooks/useCategories'
 import { useCreateTodo, useDeleteTodo, useUpdateTodo } from '../hooks/useTodos'
+import { useSettingsStore } from '../store/settings'
 import {
   isUrgentPriority,
   normalizePriority,
@@ -196,11 +197,13 @@ function AddTodoForm({ categoryId, onClose }: { categoryId: string; onClose: () 
   )
 }
 
-function CategoryMenu({
+export function CategoryMenu({
   onEdit,
+  onAddCategory,
   onDelete,
 }: {
   onEdit: () => void
+  onAddCategory?: () => void
   onDelete: () => void
 }) {
   const [open, setOpen] = useState(false)
@@ -237,6 +240,18 @@ function CategoryMenu({
           >
             수정
           </button>
+          {onAddCategory && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm justify-start"
+              onClick={() => {
+                setOpen(false)
+                onAddCategory()
+              }}
+            >
+              분류 추가
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-ghost btn-sm justify-start text-danger"
@@ -258,22 +273,31 @@ function CategoryTitleContent({
   isTopLevel,
   isMapped,
   percent,
+  hideCompleted,
 }: {
   node: CategoryTree
   isTopLevel: boolean
   isMapped: boolean
   percent: number
+  hideCompleted: boolean
 }) {
+  const remaining = node.todo_count - node.done_count
+
   return (
     <>
       {isTopLevel && (
-        <CategoryIcon icon={node.icon} className="text-lg leading-none text-gray-400" />
+        <CategoryIcon icon={node.icon} className="text-lg leading-none text-gray-700" />
       )}
       <span className={clsx('truncate min-w-0', isTopLevel ? 'font-bold' : 'text-sm font-semibold')}>
         {node.name}
       </span>
       {isMapped && <span className="badge bg-primary-light text-primary shrink-0">iCloud</span>}
-      {node.todo_count > 0 && <ProgressRing percent={percent} />}
+      {node.todo_count > 0 && (
+        <span className="text-xs text-gray-400 shrink-0">
+          {hideCompleted ? remaining : `${remaining}/${node.todo_count}`}
+        </span>
+      )}
+      {node.todo_count > 0 && !hideCompleted && <ProgressRing percent={percent} />}
     </>
   )
 }
@@ -292,102 +316,111 @@ export function CategoryNode({
   const [addingTodo, setAddingTodo] = useState(false)
   const [addingCategory, setAddingCategory] = useState(false)
   const deleteCategory = useDeleteCategory()
+  const hideCompleted = useSettingsStore((s) => s.hideCompletedTodos)
 
   const isMapped = !!(node.icloud_list_uid || node.icloud_list_name)
-  const canExpand = node.children.length > 0 || node.todos.length > 0 || addingTodo
+  const visibleTodos = hideCompleted ? node.todos.filter((todo) => todo.status !== 'done') : node.todos
+  const canExpand = node.children.length > 0 || visibleTodos.length > 0 || addingTodo
   const percent = node.todo_count > 0 ? Math.round((node.done_count / node.todo_count) * 100) : 0
   const isCard = mode === 'card'
   const hideTopLevelChrome = isTopLevel && isCard
+  // 상세 페이지의 최상위 분류는 페이지 타이틀이 곧 헤더 역할을 하므로 카드 안에 별도 헤더를 두지 않고 내용이 바로 나옴
+  const isDetailRoot = isTopLevel && !isCard
 
   return (
     <div className={clsx('flex flex-col gap-2', !isTopLevel && 'border-l-2 border-gray-100 pl-3')}>
-      <div
-        className={clsx('flex items-center justify-between gap-2', isTopLevel && 'rounded-[10px] pl-3 py-2')}
-        style={isTopLevel && node.color ? { backgroundColor: `${node.color}1a` } : undefined}
-      >
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          {canExpand && !hideTopLevelChrome && (
-            <button
-              type="button"
-              className="text-gray-400 shrink-0 transition-transform p-0.5"
-              aria-label={expanded ? '접기' : '펼치기'}
-              onClick={() => setExpanded((v) => !v)}
-            >
-              <FaIcon
-                name="chevron-right"
-                className={clsx('text-xs transition-transform', expanded && 'rotate-90')}
-              />
-            </button>
+      {!isDetailRoot && (
+        <div
+          className={clsx(
+            'flex items-center justify-between gap-2',
+            hideTopLevelChrome && '-mx-4 -mt-4 mb-3 px-4 py-3 rounded-t-[var(--radius-btn-xl)]',
           )}
-          {isCard ? (
-            <Link
-              to={`/category/${node.id}`}
-              className="flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-80"
-            >
-              <CategoryTitleContent
-                node={node}
-                isTopLevel={isTopLevel}
-                isMapped={isMapped}
-                percent={percent}
-              />
-            </Link>
-          ) : (
-            <button
-              type="button"
-              className="flex items-center gap-2 min-w-0 flex-1 text-left"
-              onClick={() => canExpand && setExpanded((v) => !v)}
-            >
-              <CategoryTitleContent
-                node={node}
-                isTopLevel={isTopLevel}
-                isMapped={isMapped}
-                percent={percent}
-              />
-            </button>
+          style={
+            hideTopLevelChrome
+              ? { backgroundColor: node.color ? `${node.color}12` : undefined }
+              : undefined
+          }
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {canExpand && !hideTopLevelChrome && (
+              <button
+                type="button"
+                className="text-gray-400 shrink-0 transition-transform p-0.5"
+                aria-label={expanded ? '접기' : '펼치기'}
+                onClick={() => setExpanded((v) => !v)}
+              >
+                <FaIcon
+                  name="chevron-right"
+                  className={clsx('text-xs transition-transform', expanded && 'rotate-90')}
+                />
+              </button>
+            )}
+            {isCard ? (
+              <Link
+                to={`/category/${node.id}`}
+                className="flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-80"
+              >
+                <CategoryTitleContent
+                  node={node}
+                  isTopLevel={isTopLevel}
+                  isMapped={isMapped}
+                  percent={percent}
+                  hideCompleted={hideCompleted}
+                />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="flex items-center gap-2 min-w-0 flex-1 text-left"
+                onClick={() => canExpand && setExpanded((v) => !v)}
+              >
+                <CategoryTitleContent
+                  node={node}
+                  isTopLevel={isTopLevel}
+                  isMapped={isMapped}
+                  percent={percent}
+                  hideCompleted={hideCompleted}
+                />
+              </button>
+            )}
+          </div>
+
+          {!isCard && (
+            <CategoryMenu
+              onEdit={() => setEditing(true)}
+              onAddCategory={!isMapped ? () => setAddingCategory(true) : undefined}
+              onDelete={() => {
+                if (confirm(`'${node.name}' 분류를 삭제할까요? (30일 내 복구 가능)`)) {
+                  deleteCategory.mutate(node.id)
+                }
+              }}
+            />
           )}
         </div>
-
-        {!isCard && (
-          <CategoryMenu
-            onEdit={() => setEditing(true)}
-            onDelete={() => {
-              if (confirm(`'${node.name}' 분류를 삭제할까요? (30일 내 복구 가능)`)) {
-                deleteCategory.mutate(node.id)
-              }
-            }}
-          />
-        )}
-      </div>
+      )}
 
       {expanded && (
-        <div className="flex flex-col gap-2 pl-1">
+        <div className={clsx('flex flex-col gap-2', !isDetailRoot && 'pl-1')}>
           {node.children.map((child) => (
             <CategoryNode key={child.id} node={child} isTopLevel={false} mode={mode} />
           ))}
-          {node.todos.map((todo) => (
+          {visibleTodos.map((todo) => (
             <TodoRow key={todo.id} todo={todo} />
           ))}
           {addingTodo ? (
             <AddTodoForm categoryId={node.id} onClose={() => setAddingTodo(false)} />
           ) : (
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm text-gray-500"
-                onClick={() => setAddingTodo(true)}
-              >
-                + 할 일
-              </button>
-              {!isMapped && (
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm text-gray-500"
-                  onClick={() => setAddingCategory(true)}
-                >
-                  + 분류 추가
-                </button>
-              )}
-            </div>
+            <button
+              type="button"
+              className="group relative flex h-6 items-center py-1"
+              onClick={() => setAddingTodo(true)}
+              aria-label="할 일 추가"
+            >
+              <span className="h-px w-full bg-gray-100 transition-colors group-hover:bg-gray-300" />
+              <span className="absolute left-1/2 top-1/2 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-gray-700 opacity-0 transition-opacity group-hover:bg-gray-200 group-hover:opacity-100">
+                <FaIcon name="plus" className="text-[10px]" />
+              </span>
+            </button>
           )}
         </div>
       )}

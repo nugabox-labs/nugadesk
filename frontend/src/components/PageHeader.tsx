@@ -2,6 +2,7 @@ import clsx from 'clsx'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
+import { CategoryIcon } from './CategoryIcon'
 import { FaIcon } from './FaIcon'
 import { PAGE_CONTAINER_CLASS } from './PageShell'
 import { useLayout } from '../context/LayoutContext'
@@ -31,17 +32,22 @@ function BreadcrumbTrail({ items, className }: { items: BreadcrumbItem[]; classN
 export function PageHeader({
   title,
   description,
+  icon,
   breadcrumbs,
 }: {
   title: string
   description?: string
+  icon?: string | null
   breadcrumbs: BreadcrumbItem[]
 }) {
   return (
     <header className="page-header shrink-0">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold text-gray-900 truncate">{title}</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <CategoryIcon icon={icon} className="text-xl leading-none text-gray-700" />
+            <span className="truncate">{title}</span>
+          </h1>
           {description && <p className="mt-1.5 text-sm text-gray-500 leading-relaxed">{description}</p>}
         </div>
         <div className="hidden lg:flex items-center shrink-0 max-w-[50%]">
@@ -58,9 +64,11 @@ export function PageHeader({
 export function MobileBreadcrumbBar({
   breadcrumbs,
   title,
+  icon,
 }: {
   breadcrumbs: BreadcrumbItem[]
   title?: string
+  icon?: string | null
 }) {
   const { toggleDrawer } = useLayout()
 
@@ -76,7 +84,10 @@ export function MobileBreadcrumbBar({
       </button>
       <div className="flex-1 min-w-0 flex items-baseline gap-2">
         {title ? (
-          <span className="text-base font-bold text-gray-900 truncate">{title}</span>
+          <span className="flex items-center gap-1.5 min-w-0">
+            <CategoryIcon icon={icon} className="text-sm leading-none text-gray-700 shrink-0" />
+            <span className="text-base font-bold text-gray-900 truncate">{title}</span>
+          </span>
         ) : (
           <BreadcrumbTrail items={breadcrumbs} className="text-xs text-gray-400 font-medium flex-1" />
         )}
@@ -88,22 +99,27 @@ export function MobileBreadcrumbBar({
 function DesktopExpandedHeader({
   title,
   description,
+  icon,
   breadcrumbs,
 }: {
   title: string
   description?: string
+  icon?: string | null
   breadcrumbs: BreadcrumbItem[]
 }) {
   if (breadcrumbs.length <= 1) {
     return (
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold text-gray-900 truncate">{title}</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+          <CategoryIcon icon={icon} className="text-xl leading-none text-gray-700" />
+          <span className="truncate">{title}</span>
+        </h1>
         {description && <p className="mt-1.5 text-sm text-gray-500 leading-relaxed">{description}</p>}
       </div>
     )
   }
 
-  return <PageHeader title={title} description={description} breadcrumbs={breadcrumbs} />
+  return <PageHeader title={title} description={description} icon={icon} breadcrumbs={breadcrumbs} />
 }
 
 export function StickyPageHeader() {
@@ -112,7 +128,7 @@ export function StickyPageHeader() {
   const [compact, setCompact] = useState(false)
   const [barMounted, setBarMounted] = useState(false)
   const [barVisible, setBarVisible] = useState(false)
-  const { breadcrumbs, title, description } = usePageMeta()
+  const { breadcrumbs, title, description, icon } = usePageMeta()
   const showTitle = breadcrumbs.length <= 1
 
   useEffect(() => {
@@ -152,7 +168,11 @@ export function StickyPageHeader() {
       <div className="lg:hidden sticky top-0 z-10 app-sticky-header pt-3 pb-2.5">
         <div className="px-4 lg:px-8">
           <div className={PAGE_CONTAINER_CLASS}>
-            <MobileBreadcrumbBar breadcrumbs={breadcrumbs} title={showTitle ? title : undefined} />
+            <MobileBreadcrumbBar
+              breadcrumbs={breadcrumbs}
+              title={showTitle ? title : undefined}
+              icon={showTitle ? icon : undefined}
+            />
           </div>
         </div>
       </div>
@@ -160,7 +180,7 @@ export function StickyPageHeader() {
       <div className="hidden lg:block px-4 lg:px-8">
         <div className={PAGE_CONTAINER_CLASS}>
           <div ref={sentinelRef} className="pt-6 pb-4">
-            <DesktopExpandedHeader title={title} description={description} breadcrumbs={breadcrumbs} />
+            <DesktopExpandedHeader title={title} description={description} icon={icon} breadcrumbs={breadcrumbs} />
           </div>
         </div>
       </div>
@@ -176,7 +196,10 @@ export function StickyPageHeader() {
           >
             <div className="px-4 lg:px-8 py-2.5">
               <div className={PAGE_CONTAINER_CLASS}>
-                <h1 className="text-base font-bold text-gray-900 text-center truncate">{title}</h1>
+                <h1 className="flex items-center justify-center gap-1.5 text-base font-bold text-gray-900">
+                  <CategoryIcon icon={icon} className="text-sm leading-none text-gray-700 shrink-0" />
+                  <span className="truncate">{title}</span>
+                </h1>
               </div>
             </div>
           </div>

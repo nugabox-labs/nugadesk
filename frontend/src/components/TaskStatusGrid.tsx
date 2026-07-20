@@ -3,15 +3,19 @@ import type { CSSProperties } from 'react'
 
 import { CategoryFormModal } from './CategoryFormModal'
 import { CategoryNode } from './CategoryNode'
+import { FaIcon } from './FaIcon'
 import { sortTopLevelCategories } from '../lib/sortCategories'
 import { TASK_CATEGORY_SORT_OPTIONS, useSettingsStore } from '../store/settings'
 import { useDashboardTree } from '../hooks/useDashboard'
+import clsx from 'clsx'
 
 export function TaskStatusGrid() {
   const { data: categories, isLoading } = useDashboardTree()
   const taskColumns = useSettingsStore((s) => s.taskColumns)
   const taskCategorySort = useSettingsStore((s) => s.taskCategorySort)
   const setTaskCategorySort = useSettingsStore((s) => s.setTaskCategorySort)
+  const hideCompletedTodos = useSettingsStore((s) => s.hideCompletedTodos)
+  const setHideCompletedTodos = useSettingsStore((s) => s.setHideCompletedTodos)
   const [showCreate, setShowCreate] = useState(false)
 
   const sortedCategories = useMemo(
@@ -36,6 +40,18 @@ export function TaskStatusGrid() {
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            className={clsx(
+              'btn btn-sm gap-1.5',
+              hideCompletedTodos ? 'bg-primary-light text-primary' : 'btn-ghost text-gray-500',
+            )}
+            aria-pressed={hideCompletedTodos}
+            onClick={() => setHideCompletedTodos(!hideCompletedTodos)}
+          >
+            <FaIcon name={hideCompletedTodos ? 'eye-slash' : 'eye'} className="text-xs" />
+            완료 숨김
+          </button>
           <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>
             + 작업 추가
           </button>
@@ -46,7 +62,7 @@ export function TaskStatusGrid() {
 
       <div className="task-grid" style={{ '--task-cols': taskColumns } as CSSProperties}>
         {sortedCategories?.map((category) => (
-          <div key={category.id} className="card-flat p-5">
+          <div key={category.id} className="card-flat p-4">
             <CategoryNode node={category} isTopLevel />
           </div>
         ))}

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 
 const STORAGE_KEY = 'nugadesk-task-columns'
 const SORT_STORAGE_KEY = 'nugadesk-task-category-sort'
+const HIDE_COMPLETED_STORAGE_KEY = 'nugadesk-task-hide-completed'
 const MIN_COLUMNS = 1
 const MAX_COLUMNS = 4
 const DEFAULT_COLUMNS = 2
@@ -41,16 +42,24 @@ function readStoredSort(): TaskCategorySort {
   return stored && isTaskCategorySort(stored) ? stored : DEFAULT_SORT
 }
 
+function readStoredHideCompleted(): boolean {
+  const stored = localStorage.getItem(HIDE_COMPLETED_STORAGE_KEY)
+  return stored === null ? true : stored === '1'
+}
+
 interface SettingsState {
   taskColumns: number
   taskCategorySort: TaskCategorySort
+  hideCompletedTodos: boolean
   setTaskColumns: (columns: number) => void
   setTaskCategorySort: (sort: TaskCategorySort) => void
+  setHideCompletedTodos: (hide: boolean) => void
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
   taskColumns: readStoredColumns(),
   taskCategorySort: readStoredSort(),
+  hideCompletedTodos: readStoredHideCompleted(),
   setTaskColumns: (columns) => {
     const clamped = clamp(columns)
     localStorage.setItem(STORAGE_KEY, String(clamped))
@@ -59,6 +68,10 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setTaskCategorySort: (sort) => {
     localStorage.setItem(SORT_STORAGE_KEY, sort)
     set({ taskCategorySort: sort })
+  },
+  setHideCompletedTodos: (hide) => {
+    localStorage.setItem(HIDE_COMPLETED_STORAGE_KEY, hide ? '1' : '0')
+    set({ hideCompletedTodos: hide })
   },
 }))
 
