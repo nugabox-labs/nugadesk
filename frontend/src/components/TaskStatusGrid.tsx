@@ -37,7 +37,7 @@ export function TaskStatusGrid() {
             ))}
           </select>
           <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>
-            + 분류 추가
+            + 작업 추가
           </button>
         </div>
       </div>
@@ -52,7 +52,7 @@ export function TaskStatusGrid() {
         ))}
       </div>
       {!isLoading && sortedCategories?.length === 0 && (
-        <p className="text-gray-400 text-sm">아직 분류가 없습니다. 위 버튼으로 추가해보세요.</p>
+        <p className="text-gray-400 text-sm">아직 작업이 없습니다. 위 버튼으로 추가해보세요.</p>
       )}
 
       {showCreate && <CategoryFormModal parentId={null} onClose={() => setShowCreate(false)} />}

@@ -1,14 +1,26 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 
 import { PersonalIconField, IconPreviewSlot } from './PersonalIconField'
 import { FaIcon } from './FaIcon'
 import { Modal } from './Modal'
 import { useCreateCategory, useUpdateCategory } from '../hooks/useCategories'
+import { useDashboardTree } from '../hooks/useDashboard'
 import { useIcloudLists, useIcloudStatus } from '../hooks/useIcloud'
-import type { Category } from '../lib/types'
+import type { Category, CategoryTree } from '../lib/types'
 
 const COLOR_OPTIONS = ['#3182f6', '#00c896', '#ff9500', '#f04452', '#8b95a1', '#7c5cff']
+
+function flattenCategoryOptions(nodes: CategoryTree[], depth = 0): { id: string; label: string; disabled: boolean }[] {
+  const options: { id: string; label: string; disabled: boolean }[] = []
+  for (const node of nodes) {
+    const mapped = !!(node.icloud_list_uid || node.icloud_list_name)
+    const prefix = depth > 0 ? `${'　'.repeat(depth - 1)}└ ` : ''
+    options.push({ id: node.id, label: `${prefix}${node.name}`, disabled: mapped })
+    options.push(...flattenCategoryOptions(node.children, depth + 1))
+  }
+  return options
+}
 
 export function CategoryFormModal({
   parentId,
@@ -16,7 +28,11 @@ export function CategoryFormModal({
   hasChildren,
   onClose,
 }: {
-  /** null when creating a top-level 분류. Ignored when `initial` is set (no reparenting). */
+  /**
+   * Default parent when creating. `null` means creating a top-level 작업 (no 상위 분류 select shown).
+   * A non-null id creates a nested 분류 — the modal shows a 상위 분류 select seeded with this value
+   * that the user can override to any other category. Ignored when `initial` is set (no reparenting).
+   */
   parentId: string | null
   initial?: Category
   /** Existing children already block iCloud mapping server-side — reflect that in the UI too. */
@@ -25,6 +41,7 @@ export function CategoryFormModal({
 }) {
   const isTopLevel = initial ? initial.parent_id === null : parentId === null
   const isEdit = !!initial
+  const showParentSelect = !isEdit && !isTopLevel
   const createCategory = useCreateCategory()
   const updateCategory = useUpdateCategory()
 
@@ -33,9 +50,15 @@ export function CategoryFormModal({
   const [color, setColor] = useState<string | null>(initial?.color ?? COLOR_OPTIONS[0])
   const [icloudListUid, setIcloudListUid] = useState(initial?.icloud_list_uid ?? '')
   const [icloudListName, setIcloudListName] = useState(initial?.icloud_list_name ?? '')
+  const [selectedParentId, setSelectedParentId] = useState(parentId ?? '')
 
   const { data: icloudStatus } = useIcloudStatus()
   const { data: icloudLists, isLoading: icloudListsLoading } = useIcloudLists(!!icloudStatus?.connected)
+  const { data: categoryTree } = useDashboardTree()
+  const parentOptions = useMemo(
+    () => (showParentSelect && categoryTree ? flattenCategoryOptions(categoryTree) : []),
+    [showParentSelect, categoryTree],
+  )
 
   useEffect(() => {
     if (icloudListUid || !icloudListName || !icloudLists?.length) return
@@ -60,6 +83,7 @@ export function CategoryFormModal({
   function submit(e: FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
+    if (showParentSelect && !selectedParentId) return
 
     if (isEdit) {
       updateCategory.mutate(
@@ -76,7 +100,7 @@ export function CategoryFormModal({
       createCategory.mutate(
         {
           name: name.trim(),
-          parent_id: parentId,
+          parent_id: showParentSelect ? selectedParentId : parentId,
           ...(isTopLevel ? { icon, color: color ?? undefined } : {}),
           icloud_list_uid: icloudListUid || undefined,
           icloud_list_name: icloudListName.trim() || undefined,
@@ -86,9 +110,29 @@ export function CategoryFormModal({
     }
   }
 
+  const title = isTopLevel ? (isEdit ? '작업 수정' : '작업 추가') : isEdit ? '분류 수정' : '분류 추가'
+
   return (
-    <Modal title={isEdit ? '분류 수정' : '분류 추가'} onClose={onClose}>
+    <Modal title={title} onClose={onClose}>
       <form onSubmit={submit} className="flex flex-col gap-3">
+        {showParentSelect && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-semibold text-gray-700">상위 분류</label>
+            <select
+              className="input"
+              value={selectedParentId}
+              onChange={(e) => setSelectedParentId(e.target.value)}
+              required
+            >
+              {parentOptions.map((opt) => (
+                <option key={opt.id} value={opt.id} disabled={opt.disabled}>
+                  {opt.label}
+                  {opt.disabled ? ' (iCloud 연결됨)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         {isTopLevel ? (
           <>
             <div className="flex items-center gap-3">

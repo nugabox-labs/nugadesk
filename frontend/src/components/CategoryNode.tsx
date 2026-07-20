@@ -158,42 +158,15 @@ function TodoRow({ todo }: { todo: Todo }) {
   )
 }
 
-function AddTodoRow({
-  categoryId,
-  defaultOpen = false,
-  onClose,
-}: {
-  categoryId: string
-  defaultOpen?: boolean
-  onClose?: () => void
-}) {
-  const [open, setOpen] = useState(defaultOpen)
+function AddTodoForm({ categoryId, onClose }: { categoryId: string; onClose: () => void }) {
   const [title, setTitle] = useState('')
   const createTodo = useCreateTodo(categoryId)
-
-  function close() {
-    setOpen(false)
-    setTitle('')
-    onClose?.()
-  }
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm justify-start text-gray-500"
-        onClick={() => setOpen(true)}
-      >
-        + 할 일
-      </button>
-    )
-  }
 
   function submit(e?: FormEvent) {
     e?.preventDefault()
     const trimmed = title.trim()
     if (!trimmed) return
-    createTodo.mutate({ title: trimmed }, { onSuccess: close })
+    createTodo.mutate({ title: trimmed }, { onSuccess: () => { setTitle(''); onClose() } })
   }
 
   return (
@@ -213,29 +186,13 @@ function AddTodoRow({
         onBlur={(e) => {
           const next = e.relatedTarget
           if (next && e.currentTarget.form?.contains(next)) return
-          if (!title.trim()) close()
+          if (!title.trim()) onClose()
         }}
       />
       <button type="submit" className="btn btn-primary btn-sm shrink-0">
         추가
       </button>
     </form>
-  )
-}
-
-function AddTodoIconButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      className="text-gray-400 shrink-0 p-0.5 hover:text-gray-700"
-      aria-label="할 일 추가"
-      onClick={(e) => {
-        e.stopPropagation()
-        onClick()
-      }}
-    >
-      <FaIcon name="plus" className="text-xs" />
-    </button>
   )
 }
 
@@ -333,6 +290,7 @@ export function CategoryNode({
   const [expanded, setExpanded] = useState(true)
   const [editing, setEditing] = useState(false)
   const [addingTodo, setAddingTodo] = useState(false)
+  const [addingCategory, setAddingCategory] = useState(false)
   const deleteCategory = useDeleteCategory()
 
   const isMapped = !!(node.icloud_list_uid || node.icloud_list_name)
@@ -340,11 +298,6 @@ export function CategoryNode({
   const percent = node.todo_count > 0 ? Math.round((node.done_count / node.todo_count) * 100) : 0
   const isCard = mode === 'card'
   const hideTopLevelChrome = isTopLevel && isCard
-
-  function openAddTodo() {
-    setExpanded(true)
-    setAddingTodo(true)
-  }
 
   return (
     <div className={clsx('flex flex-col gap-2', !isTopLevel && 'border-l-2 border-gray-100 pl-3')}>
@@ -394,9 +347,7 @@ export function CategoryNode({
           )}
         </div>
 
-        {isCard ? (
-          !hideTopLevelChrome && <AddTodoIconButton onClick={openAddTodo} />
-        ) : (
+        {!isCard && (
           <CategoryMenu
             onEdit={() => setEditing(true)}
             onDelete={() => {
@@ -416,23 +367,28 @@ export function CategoryNode({
           {node.todos.map((todo) => (
             <TodoRow key={todo.id} todo={todo} />
           ))}
-          <div className="flex flex-col gap-2">
-            {isCard ? (
-              hideTopLevelChrome ? (
-                <AddTodoRow categoryId={node.id} />
-              ) : (
-                addingTodo && (
-                  <AddTodoRow
-                    categoryId={node.id}
-                    defaultOpen
-                    onClose={() => setAddingTodo(false)}
-                  />
-                )
-              )
-            ) : (
-              <AddTodoRow categoryId={node.id} />
-            )}
-          </div>
+          {addingTodo ? (
+            <AddTodoForm categoryId={node.id} onClose={() => setAddingTodo(false)} />
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm text-gray-500"
+                onClick={() => setAddingTodo(true)}
+              >
+                + 할 일
+              </button>
+              {!isMapped && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm text-gray-500"
+                  onClick={() => setAddingCategory(true)}
+                >
+                  + 분류 추가
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -443,6 +399,10 @@ export function CategoryNode({
           hasChildren={node.children.length > 0}
           onClose={() => setEditing(false)}
         />
+      )}
+
+      {addingCategory && (
+        <CategoryFormModal parentId={node.id} onClose={() => setAddingCategory(false)} />
       )}
     </div>
   )
